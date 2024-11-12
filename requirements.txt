@@ -1,0 +1,10 @@
+selenium
+requests
+pymongo
+pdfplumber
+python-dotenv
+urllib3==1.26.6
+webdriver-manager
+beautifulsoup4
+lxml
+pytesseract
