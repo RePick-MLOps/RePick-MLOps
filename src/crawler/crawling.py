@@ -108,16 +108,49 @@ def insert_to_db(stock_report_data_list):
         except DuplicateKeyError:
             logging.warning(f"{report_data['report_id']} 중복으로 인해 저장되지 않았습니다.")
 
+def get_next_page_url(driver, current_page):
+    try:
+        current_page_element = driver.find_element(By.XPATH, "//td[@class='on']/a")
+        current_page = int(current_page_element.text)
+
+        next_page = current_page + 1
+        next_page_url = f"https://finance.naver.com/research/company_list.naver?&page={next_page}"
+        logging.info(f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}")
+        return next_page_url
+    except Exception as e:
+        logging.error(f"다음 페이지 URL을 찾는 중 오류 발생: {e}")
+        return None
+
 def crawl_pdfs():
     driver = init_driver()
-    
-    # stock page crawling
+
     if navigate_stock_report_page(driver):
         stock_report_data_list = extract_report_data(driver)
-        driver.quit()
-        
+
+        current_page = 1
+        max_pages = 5  # 최대 5페이지
+
+        while current_page <= max_pages:
+            next_page_url = get_next_page_url(driver, current_page)
+            if not next_page_url:
+                logging.info("다음 페이지가 없거나 오류 발생")
+                break
+
+            driver.get(next_page_url)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//*[@id='contentarea_left']/div[2]/table[1]/tbody"))
+            )
+            logging.info(f"페이지 {current_page + 1} 로딩 완료")
+
+            stock_report_data_list.extend(extract_report_data(driver))
+            logging.info(f"페이지 {current_page + 1} 데이터 크롤링 완료")
+
+            current_page += 1  # 페이지 번호 증가
+
         if stock_report_data_list:
             insert_to_db(stock_report_data_list)
+        
+        driver.quit()
     else:
         logging.error("종목분석 페이지 이동 실패로 데이터 수집 중단")
 
