@@ -1,9 +1,11 @@
+import logging
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from dotenv import load_dotenv
+from pymongo.errors import DuplicateKeyError
 import requests
 import sys
 import os
@@ -14,6 +16,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from src.db.database_config import get_db_connection
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 load_dotenv()
 driver_path = os.getenv("CHROME_DRIVER_PATH")
@@ -22,9 +25,17 @@ if not driver_path:
 
 url = "https://finance.naver.com/research/"
 
+def setup_unique_index():
+    db = get_db_connection()
+    reports_collection = db['reports']
+    
+    reports_collection.create_index("report_id", unique=True)
+    logging.info("Database unique index 설정 완료")
+
 def init_driver():
     driver_service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=driver_service)
+    logging.info("Chrome driver 초기화 완료")
     return driver
 
 def navigate_stock_report_page(driver):
@@ -37,16 +48,16 @@ def navigate_stock_report_page(driver):
         stock_report_tab.click()
 
         meta_url = driver.find_element(By.XPATH, "//meta[@property='og:url']").get_attribute('content')
-        print("종목분석 탭 클릭 완료")
+        logging.info("종목분석 탭 클릭 완료")
         driver.get(meta_url)
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//*[@id='contentarea_left']/div[2]/table[1]/tbody"))
         )
-        print("종목분석 페이지 로딩 완료")
+        logging.info("종목분석 페이지 로딩 완료")
         return True
     except Exception as e:
-        print(f"페이지 탐색 오류: {e}")
+        logging.error(f"페이지 탐색 오류: {e}")
         return False
 
 def extract_report_data(driver):
@@ -82,7 +93,7 @@ def extract_report_data(driver):
                 }
                 stock_report_data_list.append(report_data)
         except Exception as e:
-            print(f"데이터 추출 오류: {e}")
+            logging.warning(f"데이터 추출 오류: {e}")
 
     return stock_report_data_list
 
@@ -91,8 +102,11 @@ def insert_to_db(stock_report_data_list):
     reports_collection = db['reports']
 
     for report_data in stock_report_data_list:
-        reports_collection.insert_one(report_data)
-        print(f"{report_data['report_id']} 데이터베이스에 저장 완료")
+        try:
+            reports_collection.insert_one(report_data)
+            logging.info(f"{report_data['report_id']} 데이터베이스에 저장 완료")
+        except DuplicateKeyError:
+            logging.warning(f"{report_data['report_id']} 중복으로 인해 저장되지 않았습니다.")
 
 def crawl_pdfs():
     driver = init_driver()
@@ -105,7 +119,8 @@ def crawl_pdfs():
         if stock_report_data_list:
             insert_to_db(stock_report_data_list)
     else:
-        print("종목분석 페이지 이동 실패로 데이터 수집 중단")
+        logging.error("종목분석 페이지 이동 실패로 데이터 수집 중단")
 
 if __name__ == "__main__":
+    setup_unique_index()
     crawl_pdfs()
