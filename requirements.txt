@@ -8,3 +8,7 @@ webdriver-manager
 beautifulsoup4
 lxml
 pytesseract
+jupyter
+pandas
+flask
+flask-cors
