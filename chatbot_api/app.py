@@ -18,15 +18,17 @@ class QueryRequest(BaseModel):
 
 # /chatbot POST 엔드포인트
 @app.post("/chatbot")
-async def chatbot(request: QueryRequest):
+async def query(request: QueryRequest):
     try:
-        response = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=request.query,
-            max_tokens=150,
-            temperature=0.7
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "user", "content": request.query}
+            ],
+            max_tokens=100
         )
-        return {"response": response["choices"][0]["text"].strip()}
+        logging.info(f"OpenAI response: {response}")
+        return {"response": response.choices[0].message.content.strip()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
