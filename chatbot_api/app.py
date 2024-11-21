@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import socket
-import json
+import openai
+import os
+from dotenv import load_dotenv
 import logging
 
-host = "127.0.0.1"
-port = 8000
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 app = FastAPI()
 
@@ -15,39 +16,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 class QueryRequest(BaseModel):
     query: str
 
-# 소켓을 통해 질문에 대한 답변을 받는 함수
-def get_answer(query: str) -> str:
-    try:
-        mySocket = socket.socket()
-        mySocket.connect((host, port))
-
-        json_data = {
-            'Query': query
-            }
-        message = json.dumps(json_data)
-        mySocket.send(message.encode())
-
-        data = mySocket.recv(2048).decode()
-        ret_data = json.loads(data)
-
-        mySocket.close()
-
-        if 'response' not in ret_data:
-            raise ValueError("Invalid response format")
-
-        return ret_data['response']
-    except Exception as ex:
-        raise Exception(f"Socket Error: {ex}")
-
 # /chatbot POST 엔드포인트
 @app.post("/chatbot")
-async def query(request: QueryRequest):
+async def chatbot(request: QueryRequest):
     try:
-        # 사용자의 query를 받아 답변을 반환
-        ret = get_answer(query=request.query)
-        return {"response": ret}
-    except Exception as ex:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(ex)}")
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=request.query,
+            max_tokens=150,
+            temperature=0.7
+        )
+        return {"response": response["choices"][0]["text"].strip()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # 서버 상태 확인 /ping GET 엔드포인트
 @app.get("/ping")
