@@ -12,3 +12,6 @@ jupyter
 pandas
 flask
 flask-cors
+
+sentence-transformers
+langchain-teddynote
