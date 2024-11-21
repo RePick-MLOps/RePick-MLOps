@@ -14,3 +14,4 @@ flask
 flask-cors
 fastapi
 uvicorn
+openai
