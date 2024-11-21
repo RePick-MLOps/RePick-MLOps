@@ -12,3 +12,5 @@ jupyter
 pandas
 flask
 flask-cors
+fastapi
+uvicorn
