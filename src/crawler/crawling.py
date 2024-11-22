@@ -62,18 +62,18 @@ def download_pdf(pdf_url, report_id):
         return None
 
 # 종목분석 페이지 탐색
-def navigate_stock_report_page(driver):
+def navigate_company_report_page(driver):
     try:
         driver.get(url)
 
-        stock_report_tab = WebDriverWait(driver, 10).until(
+        company_report_tab = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//*[@id='contentarea_left']/div[1]/h4/span/a"))
         )
-        stock_report_tab.click()
+        company_report_tab.click()
 
-        stock_url = driver.find_element(By.XPATH, "//meta[@property='og:url']").get_attribute('content')
+        company_url = driver.find_element(By.XPATH, "//meta[@property='og:url']").get_attribute('content')
         logging.info("종목분석 탭 클릭 완료")
-        driver.get(stock_url)
+        driver.get(company_url)
 
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//*[@id='contentarea_left']/div[2]/table[1]/tbody"))
@@ -86,7 +86,7 @@ def navigate_stock_report_page(driver):
 
 # 리포트 데이터 추출
 def extract_report_data(driver):
-    stock_report_data_list = []
+    company_report_data_list = []
     rows = driver.find_elements(By.XPATH, "//*[@id='contentarea_left']/div[2]/table[1]/tbody/tr")
 
     for row in rows[2:47]:
@@ -119,18 +119,18 @@ def extract_report_data(driver):
                     "pdf_download_path": pdf_path,
                     "report_type" : "Company"
                 }
-                stock_report_data_list.append(report_data)
+                company_report_data_list.append(report_data)
         except Exception as e:
             logging.warning(f"데이터 추출 오류: {e}")
 
-    return stock_report_data_list
+    return company_report_data_list
 
 # 데이터베이스에 저장
-def insert_to_db(stock_report_data_list):
+def insert_to_db(company_report_data_list):
     db = get_db_connection()
     reports_collection = db['reports']
 
-    for report_data in stock_report_data_list:
+    for report_data in company_report_data_list:
         try:
             reports_collection.insert_one(report_data)
             logging.info(f"{report_data['report_id']} 데이터베이스에 저장 완료")
@@ -155,8 +155,8 @@ def get_next_page_url(driver, current_page):
 def crawl_pdfs():
     driver = init_driver()
 
-    if navigate_stock_report_page(driver):
-        stock_report_data_list = extract_report_data(driver)
+    if navigate_company_report_page(driver):
+        company_report_data_list = extract_report_data(driver)
 
         current_page = 1
         max_pages = 10
@@ -173,13 +173,13 @@ def crawl_pdfs():
             )
             logging.info(f"페이지 {current_page + 1} 로딩 완료")
 
-            stock_report_data_list.extend(extract_report_data(driver))
+            company_report_data_list.extend(extract_report_data(driver))
             logging.info(f"페이지 {current_page + 1} 데이터 크롤링 완료")
 
             current_page += 1
 
-        if stock_report_data_list:
-            insert_to_db(stock_report_data_list)
+        if company_report_data_list:
+            insert_to_db(company_report_data_list)
         
         driver.quit()
     else:
