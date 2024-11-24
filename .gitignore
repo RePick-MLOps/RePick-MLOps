@@ -1,6 +1,32 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+
+# Data
+data/pdf/*
+data/vectordb/*
+data/logs/*
+!data/pdf/.gitkeep
+!data/vectordb/.gitkeep
+!data/logs/.gitkeep
+
+.txt
+
+# Environment
+.env
+
+# IDE
+.vscode/
+.idea/
+
 .png
 .json
 .csv

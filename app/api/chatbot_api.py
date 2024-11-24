@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel
 import json
 from pathlib import Path
 from app.chatbot import DocumentChatbot
-from vectorstore import VectorStore
+from src.vectorstore import VectorStore
+
 
 app = FastAPI()
 

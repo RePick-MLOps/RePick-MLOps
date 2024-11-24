@@ -1,0 +1,100 @@
+[tool.poetry]
+name = "langchain-kr"
+version = "0.1.1"
+description = "Ultimate LangChain Tutorial written in Korean by TeddyNote."
+authors = ["teddy <teddylee777@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+package-mode = false
+
+packages = [
+    { include = "graphparser" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.12"
+
+# 언어 및 자연어 처리 관련 패키지
+langchain = "^0.2.16"
+langchain-openai = "^0.1.23"
+openai = "^1.34"
+langchain-anthropic = "^0.1"
+langchain-text-splitters = "^0.2"
+langchain-community = "^0.2"
+langchain-elasticsearch = "^0.2"
+langchain-upstage = "^0.1"
+langchain-chroma = "^0.1"
+langchain-cohere = "^0.1"
+langchainhub = "^0.1.15"
+langgraph = "^0.2.19"
+langsmith = "^0.1.115"
+langchain-teddynote = "^0.0"
+huggingface-hub = "^0.23"
+deepl = "^1.17.0"
+kiwipiepy = "^0.17.1"
+konlpy = "^0.6.0"
+pymupdf = "^1.24.1"
+ipython = "^8.27.0"
+faiss-cpu = "^1.8.0.post1"
+
+# 데이터 처리 및 분석 관련 패키지
+pandas = "^2.2.2"
+rank-bm25 = "^0.2.2"
+
+# 데이터베이스 및 캐시 관련 패키지
+redis = "^5.0.3"
+chromadb = "^0.4.24"
+
+# PDF 및 파일 처리 관련 패키지
+pypdf = "^4.2.0"
+pdfplumber = "^0.11.1"
+pdfminer-six = "^20231228"
+pymupdf4llm = "^0.0"
+
+# 시각화 및 사용자 인터페이스 관련 패키지
+matplotlib = "^3.8.4"
+streamlit = "^1.32.2"
+jupyter = "^1.0.0"
+notebook = "^7.1.2"
+
+# 딥러닝 및 머신러닝 관련 패키지
+torch = "^2.2.2"
+torchvision = "^0.17.2"
+open-clip-torch = "^2.24.0"
+
+# 기타 유틸리티 및 필수 패키지
+python-dotenv = "^1.0.1"
+pillow = "^10.4.0"
+pydantic = "^2.7.4"
+lxml = "^5.2.2"
+lark = "^1.1.9"
+ragas = "^0.1.7"
+unstructured = {version = "0.10.19", extras = ["all-docs"]}
+arxiv = "^2.1.0"
+tiktoken = "^0.7"
+tenacity = "8.3.0"
+langchain-experimental = "^0.0.61"
+pymilvus = "^2.4.4"
+langchain-milvus = "^0.1.1"
+langchain-google-genai = "^1.0.7"
+langchain-huggingface = "^0.0.3"
+google-search-results = "^2.4.2"
+protobuf = "3.20.3"
+sqlalchemy = "^2.0.31"
+llama-index-core = "^0.10.58"
+llama-parse = "^0.4.9"
+llama-index-readers-file = "^0.1.30"
+flashrank = "^0.2.8"
+docx2txt = "^0.8"
+nest-asyncio = "^1.6.0"
+rapidocr-onnxruntime = "^1.3.24"
+seaborn = "^0.13.2"
+grandalf = "^0.8"
+rouge-score = "^0.1.2"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
