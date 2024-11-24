@@ -6,7 +6,8 @@ from app.chatbot import DocumentChatbot
 from src.vectorstore import VectorStore
 
 
-app = FastAPI()
+# APIRouter 인스턴스 생성
+router = APIRouter()
 
 
 class QueryRequest(BaseModel):
@@ -62,7 +63,7 @@ def initialize_chatbot():
         chatbot = DocumentChatbot(documents, persist_directory="./data/vectordb")
 
 
-@app.post("/chatbot")
+@router.post("/chatbot")
 async def query(request: QueryRequest):
     try:
         # 챗봇이 초기화되지 않았다면 초기화
@@ -76,6 +77,6 @@ async def query(request: QueryRequest):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 
-@app.get("/ping")
+@router.get("/ping")
 async def ping():
-    return {"status": "running"}
+    return {"message": "Hello from chatbot!"}
