@@ -2,6 +2,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import chain
 from .models import MultiModal
 from .state import GraphState
+from langchain.chains import create_extraction_chain
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
 
 
 @chain
@@ -10,6 +13,7 @@ def extract_image_summary(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
+        max_tokens=4096,
     )
 
     system_prompt = """당신은 이미지에서 유용한 정보를 추출하는 전문가입니다.
@@ -68,6 +72,7 @@ def extract_table_summary(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
+        max_tokens=4096,
     )
 
     system_prompt = """당신은 표(TABLE)에서 유용한 정보를 추출하는 전문가입니다.
@@ -130,6 +135,7 @@ def table_markdown_extractor(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
+        max_tokens=4096,
     )
 
     system_prompt = "당신은 표(TABLE) 이미지를 마크다운 형식으로 변환하는 전문가입니다. 표의 모든 정보를 반드시 포함해야 합니다. 설명하지 말고, 마크다운 형식으로만 답변하세요."

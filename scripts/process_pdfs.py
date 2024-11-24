@@ -77,7 +77,14 @@ def process_new_pdfs():
                     "image_summary": getattr(state, "image_summary", {}),
                     "table_summary": getattr(state, "table_summary", {}),
                 }
+
+                # 디버깅을 위한 로깅 추가
+                print(f"텍스트 요약 수: {len(state_dict['text_summary'])}")
+                print(f"이미지 요약 수: {len(state_dict['image_summary'])}")
+                print(f"테이블 요약 수: {len(state_dict['table_summary'])}")
+
                 processed_states[pdf_file] = state_dict
+
                 print(f"처리 완료: {pdf_file}")
             except Exception as e:
                 print(f"처리 실패 ({pdf_file}): {str(e)}")

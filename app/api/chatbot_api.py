@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from app.chatbot import DocumentChatbot
 from src.vectorstore import VectorStore
+from langchain_core.documents import Document
 
 
 # APIRouter 인스턴스 생성
@@ -14,7 +15,7 @@ class QueryRequest(BaseModel):
     query: str
 
 
-# 전역 변수로 챗봇 인스턴스 유지
+# 챗봇 초기화
 chatbot = None
 
 
@@ -60,12 +61,13 @@ def initialize_chatbot():
                 )
 
         # 챗봇 초기화
-        chatbot = DocumentChatbot(documents, persist_directory="./data/vectordb")
+        chatbot = DocumentChatbot(documents, "./data/vectordb")
 
 
 @router.post("/chatbot")
 async def query(request: QueryRequest):
     try:
+        global chatbot
         # 챗봇이 초기화되지 않았다면 초기화
         if chatbot is None:
             initialize_chatbot()

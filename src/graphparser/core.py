@@ -114,6 +114,7 @@ class ExtractPageElementsNode(BaseNode):
         parsed_page_elements = self.extract_tag_elements_per_page(page_elements)
         page_numbers = list(parsed_page_elements.keys())
         return GraphState(
+            **state,
             page_metadata=page_metadata,
             page_elements=parsed_page_elements,
             page_numbers=page_numbers,
@@ -243,7 +244,7 @@ class ImageCropperNode(BaseNode):
                     cropped_images[element["id"]] = output_file
                     print(f"page:{page_num}, id:{element['id']}, path: {output_file}")
         return GraphState(
-            images=cropped_images
+            **state, images=cropped_images
         )  # 크롭된 이미지 정보를 포함한 GraphState 반환
 
 
@@ -290,7 +291,7 @@ class TableCropperNode(BaseNode):
                     cropped_images[element["id"]] = output_file
                     print(f"page:{page_num}, id:{element['id']}, path: {output_file}")
         return GraphState(
-            tables=cropped_images
+            **state, tables=cropped_images
         )  # 크롭된 표 이미지 정보를 포함한 GraphState 반환
 
 
@@ -321,7 +322,7 @@ class ExtractPageTextNode(BaseNode):
                 extracted_texts[page_num] += element["text"]
 
         # 추출된 텍스트를 포함한 새로운 GraphState 객체를 반환합니다.
-        return GraphState(texts=extracted_texts)
+        return GraphState(**state, texts=extracted_texts)
 
 
 class CreatePageSummaryNode(BaseNode):
@@ -337,14 +338,14 @@ class CreatePageSummaryNode(BaseNode):
     def create_text_summary_chain(self):
         # 요약을 위한 프롬프트 템플릿을 정의합니다.
         prompt = PromptTemplate.from_template(
-            """Please summarize the sentence according to the following REQUEST.
+            """다음 요청사항에 따라 문장을 요약해주세요.
             
-        REQUEST:
-        1. Summarize the main points in bullet points.
-        2. Write the summary in same language as the context.
-        3. DO NOT translate any technical terms.
-        4. DO NOT include any unnecessary information.
-        5. Summary must include important entities, numerical values.
+        요청사항:
+        1. 주요 내용을 글머리 기호로 요약하세요.
+        2. 원문과 동일한 언어로 요약하세요.
+        3. 전문 용어는 번역하지 마세요.
+        4. 불필요한 정보는 포함하지 마세요.
+        5. 요약에는 중요한 개체와 수치를 반드시 포함하세요.
 
         CONTEXT:
         {context}
@@ -391,9 +392,9 @@ class CreatePageSummaryNode(BaseNode):
         for page_num, summary in enumerate(summaries):
             text_summary[page_num] = summary
 
-        for (page_num, summary) in zip(sorted_texts, summaries):
+        for page_num, summary in zip(sorted_texts, summaries):
             text_summary[page_num] = summary
-        
+
         # 요약된 텍스트를 포함한 새로운 GraphState 객체를 반환합니다.
         return GraphState(text_summary=text_summary)
 

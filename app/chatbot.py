@@ -13,7 +13,12 @@ from langchain.chains import RetrievalQA
 
 
 class DocumentChatbot:
-    def __init__(self, persist_directory: str, model_name: str = "BAAI/bge-m3"):
+    def __init__(
+        self,
+        persist_directory: str,
+        documents: List[Document] = None,
+        model_name: str = "BAAI/bge-m3",
+    ):
         """
         챗봇 초기화
 
@@ -23,6 +28,15 @@ class DocumentChatbot:
         """
         # 임베딩 모델 초기화
         self.embedding = HuggingFaceEmbeddings(model_name=model_name)
+
+        if documents:
+            self.vectorstore = Chroma.from_documents(
+                documents=documents,
+                embedding_function=self.embedding,
+                persist_directory=persist_directory,
+            )
+        else:
+            self.vectorstore = self.load_vectorstore(persist_directory, model_name)
 
         # 벡터스토어 생성 및 문서 추가
         self.vectorstore = Chroma.from_documents(
@@ -85,7 +99,7 @@ class DocumentChatbot:
         )
 
         # LLM 설정
-        llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
+        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
 
         # RetrievalQA 체인 설정
         self.qa_chain = RetrievalQA.from_chain_type(

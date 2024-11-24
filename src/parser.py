@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 import os
+import sys
+from pathlib import Path
 from src.graphparser.state import GraphState
 import src.graphparser.core as parser_core
 import src.graphparser.pdf as pdf
@@ -152,28 +154,3 @@ def create_chatbot(state, persist_directory: str = "vectorstore"):
         )
 
     return DocumentChatbot(documents, persist_directory)
-
-
-if __name__ == "__main__":
-    # PDF 처리
-    pdf_directory = "data/pdf"
-    pdf_files = [f for f in os.listdir(pdf_directory) if f.endswith(".pdf")]
-
-    if not pdf_files:
-        raise ValueError(f"'{pdf_directory}' 디렉토리에 PDF 파일이 없습니다.")
-
-    first_pdf = os.path.join(pdf_directory, pdf_files[0])
-    state = process_single_pdf(first_pdf)
-
-    # 챗봇 생성 (벡터스토어 경로 지정)
-    chatbot = create_chatbot(state, persist_directory="data/vectorstore")
-
-    # 대화 루프
-    print("챗봇이 준비되었습니다. 종료하려면 'quit' 또는 'exit'를 입력하세요.")
-    while True:
-        question = input("\n질문을 입력하세요: ")
-        if question.lower() in ["quit", "exit"]:
-            break
-
-        answer = chatbot.chat(question)
-        print("\n답변:", answer)
