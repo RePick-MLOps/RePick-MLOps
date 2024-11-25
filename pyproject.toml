@@ -9,7 +9,14 @@ package-mode = false
 
 packages = [
     { include = "graphparser" },
+    { include = "scripts" },
+    { include = "app" },
+    { include = "data" },
+    { include = "src" },
 ]
+
+[tool.poetry.scripts]
+process-pdfs = "scripts.process_pdfs:main"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
@@ -35,7 +42,7 @@ kiwipiepy = "^0.17.1"
 konlpy = "^0.6.0"
 pymupdf = "^1.24.1"
 ipython = "^8.27.0"
-faiss-cpu = "^1.8.0.post1"
+faiss-cpu = "1.8.0"
 
 # 데이터 처리 및 분석 관련 패키지
 pandas = "^2.2.2"
@@ -43,7 +50,7 @@ rank-bm25 = "^0.2.2"
 
 # 데이터베이스 및 캐시 관련 패키지
 redis = "^5.0.3"
-chromadb = "^0.4.24"
+chromadb = "0.4.24"
 
 # PDF 및 파일 처리 관련 패키지
 pypdf = "^4.2.0"
@@ -65,7 +72,7 @@ open-clip-torch = "^2.24.0"
 # 기타 유틸리티 및 필수 패키지
 python-dotenv = "^1.0.1"
 pillow = "^10.4.0"
-pydantic = "^2.7.4"
+pydantic = ">=2.0.0"
 lxml = "^5.2.2"
 lark = "^1.1.9"
 ragas = "^0.1.7"
@@ -74,8 +81,8 @@ arxiv = "^2.1.0"
 tiktoken = "^0.7"
 tenacity = "8.3.0"
 langchain-experimental = "^0.0.61"
-pymilvus = "^2.4.4"
-langchain-milvus = "^0.1.1"
+pymilvus = "2.4.4"
+langchain-milvus = "0.1.1"
 langchain-google-genai = "^1.0.7"
 langchain-huggingface = "^0.0.3"
 google-search-results = "^2.4.2"
