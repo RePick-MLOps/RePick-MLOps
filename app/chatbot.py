@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 from typing import List
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.prompts import PromptTemplate
@@ -8,8 +9,10 @@ from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.chains import RetrievalQA
+
+load_dotenv()
 
 
 class DocumentChatbot:
@@ -17,7 +20,7 @@ class DocumentChatbot:
         self,
         persist_directory: str,
         documents: List[Document] = None,
-        model_name: str = "BAAI/bge-m3",
+        model_name: str = "jhgan/ko-sbert-sts",
     ):
         """
         챗봇 초기화

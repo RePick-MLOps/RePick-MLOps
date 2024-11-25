@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.chatbot_api import router
+from .api.chatbot_api import router
 
 app = FastAPI(title="RePick API")
 

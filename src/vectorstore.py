@@ -1,18 +1,18 @@
+from dotenv import load_dotenv
+import os
 import chromadb
 from tqdm import tqdm
 from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
 from typing import List, Optional
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
 
 class VectorStore:
-    def __init__(self, persist_directory: str, model_name: str = "BAAI/bge-m3"):
+    def __init__(self, persist_directory: str, model_name="jhgan/ko-sbert-sts"):
         """
         벡터스토어 초기화
 
@@ -20,8 +20,13 @@ class VectorStore:
             persist_directory (str): 벡터스토어를 저장할 디렉토리 경로
             model_name (str): HuggingFace 임베딩 모델 이름
         """
+        # .env 파일 로드
+        load_dotenv()
+
         self.persist_directory = persist_directory
-        self.embedding = HuggingFaceEmbeddings(model_name=model_name)
+        self.embedding = HuggingFaceEmbeddings(
+            model_name=model_name,
+        )
 
         # Chroma 클라이언트 설정
         self.client = chromadb.PersistentClient(path=persist_directory)
