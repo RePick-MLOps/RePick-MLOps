@@ -13,7 +13,7 @@ def load_processed_states():
     """처리된 PDF 파일 목록을 로드합니다."""
     processed_files = set()
     if os.path.exists("data/vectordb/processed_files.txt"):
-        with open("data/vectordb/processed_files.txt", "r") as f:
+        with open("data/vectordb/processed_files.txt", "r", encoding="utf-8") as f:
             for line in f:
                 # 파일 경로에서 파일명만 추출
                 filename = os.path.basename(line.strip())

@@ -45,7 +45,7 @@ class LayoutAnalyzer:
             output_file = os.path.splitext(input_file)[0] + ".json"
 
             # 분석 결과를 JSON 파일로 저장
-            with open(output_file, "w") as f:
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(response.json(), f, ensure_ascii=False)
 
             return output_file

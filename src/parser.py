@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
+import time
 import os
 import sys
+import io
 from pathlib import Path
 from src.graphparser.state import GraphState
 import src.graphparser.core as parser_core
@@ -9,6 +11,10 @@ from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 from app.chatbot import DocumentChatbot
 from langchain.schema import Document
+
+# 콘솔 인코딩을 utf-8로 설정
+sys.stdin.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv(verbose=True)
 
@@ -127,9 +133,14 @@ def process_single_pdf(filepath="data/pdf/20241122_company_22650000.pdf"):
         print("PDF 처리가 완료되었습니다.")
         return final_state
     except Exception as e:
-        print(f"PDF 처리 중 오류 발생: {str(e)}")
-        raise
-
+        error_message = str(e)
+        if "rate_limit_exceeded" in error_message:
+            print("Rate limit reached, waiting before retrying...")
+            time.sleep(1.5)  # 에러 메시지에 명시된 시간만큼 대기
+            return process_single_pdf(filepath)  # 재시도
+        else:
+            print(f"PDF 처리 중 오류 발생: {error_message}")
+            raise
 
 def create_chatbot(state, persist_directory: str = "vectorstore"):
     """

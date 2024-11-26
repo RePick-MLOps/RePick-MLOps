@@ -48,3 +48,4 @@ class SplitPDFFilesNode(BaseNode):
 
         # 분할된 PDF 파일 경로 목록을 포함한 GraphState 객체 반환
         return GraphState(filepath=filepath, filetype="pdf", split_filepaths=ret)
+

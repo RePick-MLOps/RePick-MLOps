@@ -81,7 +81,7 @@ class ExtractPageElementsNode(BaseNode):
         element_id = 0
 
         for json_file in json_files:
-            with open(json_file, "r") as f:
+            with open(json_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             start_page, _ = self.extract_start_end_page(json_file)
@@ -333,18 +333,19 @@ class CreatePageSummaryNode(BaseNode):
         super().__init__(**kwargs)
         self.name = "CreatePageSummaryNode"
         self.api_key = api_key
+        self.cache = {}
 
     def create_text_summary_chain(self):
         # 요약을 위한 프롬프트 템플릿을 정의합니다.
         prompt = PromptTemplate.from_template(
-            """Please summarize the sentence according to the following REQUEST.
-            
-        REQUEST:
-        1. Summarize the main points in bullet points.
-        2. Write the summary in same language as the context.
-        3. DO NOT translate any technical terms.
-        4. DO NOT include any unnecessary information.
-        5. Summary must include important entities, numerical values.
+            """문장을 다음 요청에 따라 요약해 주세요.
+
+            요청:
+            1. 주요 요점을 bullet point로 요약하세요.
+            2. 요약은 문맥과 동일한 언어로 작성하세요.
+            3. 기술 용어는 번역하지 마세요.
+            4. 불필요한 정보를 포함하지 마세요.
+            5. 요약에는 중요한 엔티티와 수치 값을 포함해야 합니다.
 
         CONTEXT:
         {context}
@@ -353,7 +354,7 @@ class CreatePageSummaryNode(BaseNode):
         """
         )
 
-        # ChatOpenAI 모델의 또 다른 인스턴스를 생성합니다. (이전 인스턴스와 동일한 설정)
+        # ChatOpenAI 모델의 또 다른 인스턴스를 생성합니다.
         llm = ChatOpenAI(
             model_name="gpt-4o-mini",
             temperature=0,
