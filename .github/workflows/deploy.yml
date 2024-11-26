@@ -21,8 +21,8 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t jeonghyeran/rp-chatbot:v1.0 .
+          docker build -t jeonghyeran/rp-chatbot:v1.1 .
 
       - name: Push Docker Image
         run: |
-          docker push jeonghyeran/rp-chatbot:v1.0
+          docker push jeonghyeran/rp-chatbot:v1.1
