@@ -10,7 +10,16 @@ from langgraph.checkpoint.memory import MemorySaver
 from app.chatbot import DocumentChatbot
 from langchain.schema import Document
 
-load_dotenv()
+load_dotenv(verbose=True)
+
+# 직접 환경 변수 설정
+os.environ["UPSTAGE_API_KEY"] = (
+    "up_JLERZ1DSUdTjC8ZtxcwEGJ8jJXFlw"  # 새로운 API 키로 변경
+)
+
+# 환경 변수 확인을 위한 디버그 출력 추가
+print("UPSTAGE_API_KEY:", os.environ.get("UPSTAGE_API_KEY"))
+print("환경 변수 로드 위치:", os.getcwd())
 
 # 문서 분할
 split_pdf_node = pdf.SplitPDFFilesNode(batch_size=10)
@@ -90,22 +99,30 @@ def process_single_pdf(filepath="data/pdf/20241122_company_22650000.pdf"):
 
     print(f"처리할 PDF 파일: {filepath}")
 
-    # 초기 상태 설정
-    initial_state = GraphState(
-        filepath=filepath,
-        filetype="pdf",
-        language="ko",
-        pdf_files=[filepath],
-        current_page=0,
-        processed_pages=[],
-        summaries={},
-        images=[],
-        tables=[],
-        text_summary={},
-    )
+    # TypedDict에 맞춰 초기 상태 설정
+    # TypedDict에 맞춰 초기 상태 설정
+    initial_state: GraphState = {
+        "filepath": filepath,
+        "filetype": "pdf",
+        "language": "ko",
+        "page_numbers": [],
+        "batch_size": 10,
+        "split_filepaths": [],
+        "analyzed_files": [],
+        "page_elements": {},
+        "page_metadata": {},
+        "page_summary": {},
+        "images": [],
+        "image_summary": {},
+        "tables": [],
+        "table_summary": {},
+        "table_markdown": {},
+        "texts": {},
+        "text_summary": {},
+        "table_summary_data_batches": [],
+    }
 
     try:
-        # 그래프 실행
         final_state = graph.invoke(initial_state)
         print("PDF 처리가 완료되었습니다.")
         return final_state
