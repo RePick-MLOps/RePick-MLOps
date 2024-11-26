@@ -3,6 +3,7 @@ import json
 import pickle
 import requests
 import pymupdf
+import tiktoken
 from PIL import Image
 
 
@@ -129,3 +130,6 @@ def load_state(filepath):
     base, _ = os.path.splitext(filepath)
     with open(f"{base}.pkl", "rb") as f:
         return pickle.load(f)
+
+
+

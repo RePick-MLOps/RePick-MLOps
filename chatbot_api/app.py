@@ -27,8 +27,6 @@ def initialize_chatbot():
 
             vector_store = VectorStore(persist_directory="./data/vectordb")
 
-            # ... 나머지 초기화 코드 ...
-
             chatbot = DocumentChatbot(documents, persist_directory="./data/vectordb")
             logger.info("Chatbot initialized successfully")
     except Exception as e:

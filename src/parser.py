@@ -18,10 +18,6 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 load_dotenv(verbose=True)
 
-# 직접 환경 변수 설정
-os.environ["UPSTAGE_API_KEY"] = (
-    "up_JLERZ1DSUdTjC8ZtxcwEGJ8jJXFlw"  # 새로운 API 키로 변경
-)
 
 # 환경 변수 확인을 위한 디버그 출력 추가
 print("UPSTAGE_API_KEY:", os.environ.get("UPSTAGE_API_KEY"))

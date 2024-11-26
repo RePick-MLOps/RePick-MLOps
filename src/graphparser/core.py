@@ -359,6 +359,7 @@ class CreatePageSummaryNode(BaseNode):
             model_name="gpt-4o-mini",
             temperature=0,
             api_key=self.api_key,
+            max_tokens=2000,
         )
 
         # 문서 요약을 위한 체인을 생성합니다.
