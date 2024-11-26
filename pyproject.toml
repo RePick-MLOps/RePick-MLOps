@@ -20,6 +20,7 @@ process-pdfs = "scripts.process_pdfs:main"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.12"
+pydantic = ">=2.5.2"
 
 # 언어 및 자연어 처리 관련 패키지
 langchain = "^0.2.16"
@@ -72,7 +73,6 @@ open-clip-torch = "^2.24.0"
 # 기타 유틸리티 및 필수 패키지
 python-dotenv = "^1.0.1"
 pillow = "^10.4.0"
-pydantic = ">=2.0.0"
 lxml = "^5.2.2"
 lark = "^1.1.9"
 ragas = "^0.1.7"
