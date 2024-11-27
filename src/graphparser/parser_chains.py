@@ -2,9 +2,6 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import chain
 from .models import MultiModal
 from .state import GraphState
-from langchain.chains import create_extraction_chain
-from langchain_openai import ChatOpenAI
-from langchain_core.prompts import ChatPromptTemplate
 
 
 @chain
@@ -13,12 +10,11 @@ def extract_image_summary(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
-        max_tokens=4096,
     )
 
-    system_prompt = """당신은 이미지에서 유용한 정보를 추출하는 전문가입니다.
-주어진 이미지에서 핵심 개체들을 추출하고, 요약하여, 나중에 검색에 사용할 수 있는 유용한 정보를 작성하는 것이 당신의 임무입니다.
-또한, 사용자가 이미지에 대해 물어볼 수 있는 가상의 질문 5개를 제공해주세요.
+    system_prompt = """You are an expert in extracting useful information from IMAGE.
+With a given image, your task is to extract key entities, summarize them, and write useful information that can be used later for retrieval.
+Also, provide five hypothetical questions based on the image that users can ask.
 """
 
     image_paths = []
@@ -29,28 +25,28 @@ def extract_image_summary(data_batches):
         context = data_batch["text"]
         image_path = data_batch["image"]
         language = data_batch["language"]
-        user_prompt_template = f"""다음은 표 이미지와 관련된 컨텍스트입니다: {context}
+        user_prompt_template = f"""Here is the context related to the image: {context}
         
 ###
 
-출력 형식:
+Output Format:
 
 <image>
 <title>
-[제목]
+[title]
 </title>
 <summary>
-[요약]
+[summary]
 </summary>
 <entities> 
-[개체들]
+[entities]
 </entities>
 <hypothetical_questions>
-[가상 질문들]
+[hypothetical_questions]
 </hypothetical_questions>
 </image>
 
-출력은 반드시 {language}로 작성되어야 합니다.
+Output must be written in {language}.
 """
         image_paths.append(image_path)
         system_prompts.append(system_prompt)
@@ -72,13 +68,12 @@ def extract_table_summary(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
-        max_tokens=4096,
     )
 
-    system_prompt = """당신은 표(TABLE)에서 유용한 정보를 추출하는 전문가입니다.
-주어진 이미지에서 핵심 개체들을 추출하고, 요약하여, 나중에 검색에 사용할 수 있는 유용한 정보를 작성하는 것이 당신의 임무입니다.
-숫자가 있다면, 숫자들로부터 중요한 인사이트를 요약해주세요.
-또한, 사용자가 이미지에 대해 물어볼 수 있는 가상의 질문 5개를 제공해주세요.
+    system_prompt = """You are an expert in extracting useful information from TABLE. 
+With a given image, your task is to extract key entities, summarize them, and write useful information that can be used later for retrieval.
+If the numbers are present, summarize important insights from the numbers.
+Also, provide five hypothetical questions based on the image that users can ask.
 """
 
     image_paths = []
@@ -89,31 +84,31 @@ def extract_table_summary(data_batches):
         context = data_batch["text"]
         image_path = data_batch["table"]
         language = data_batch["language"]
-        user_prompt_template = f"""다음은 표 이미지와 관련된 컨텍스트입니다: {context}
+        user_prompt_template = f"""Here is the context related to the image of table: {context}
         
 ###
 
-출력 형식:
+Output Format:
 
 <table>
 <title>
-[제목]
+[title]
 </title>
 <summary>
-[요약]
+[summary]
 </summary>
 <entities> 
-[개체들]
+[entities]
 </entities>
 <data_insights>
-[데이터 인사이트]
+[data_insights]
 </data_insights>
 <hypothetical_questions>
-[가상 질문들]
+[hypothetical_questions]
 </hypothetical_questions>
 </table>
 
-출력은 반드시 {language}로 작성되어야 합니다.
+Output must be written in {language}.
 """
         image_paths.append(image_path)
         system_prompts.append(system_prompt)
@@ -135,10 +130,9 @@ def table_markdown_extractor(data_batches):
     llm = ChatOpenAI(
         temperature=0,  # 창의성 (0.0 ~ 2.0)
         model_name="gpt-4o-mini",  # 모델명
-        max_tokens=4096,
     )
 
-    system_prompt = "당신은 표(TABLE) 이미지를 마크다운 형식으로 변환하는 전문가입니다. 표의 모든 정보를 반드시 포함해야 합니다. 설명하지 말고, 마크다운 형식으로만 답변하세요."
+    system_prompt = "You are an expert in converting image of the TABLE into markdown format. Be sure to include all the information in the table. DO NOT narrate, just answer in markdown format."
 
     image_paths = []
     system_prompts = []
@@ -146,15 +140,15 @@ def table_markdown_extractor(data_batches):
 
     for data_batch in data_batches:
         image_path = data_batch["table"]
-        user_prompt_template = f"""답변을 ```markdown``` 또는 XML 태그로 감싸지 마세요.
+        user_prompt_template = f"""DO NOT wrap your answer in ```markdown``` or any XML tags.
         
 ###
 
-출력 형식:
+Output Format:
 
 <table_markdown>
 
-출력은 반드시 한국어로 작성되어야 합니다.
+Output must be written in Korean.
 """
         image_paths.append(image_path)
         system_prompts.append(system_prompt)
