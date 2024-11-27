@@ -1,44 +1,78 @@
-from pymongo import MongoClient
-import gridfs
 import os
+import logging
+import requests
+from pymongo import MongoClient
+from dotenv import load_dotenv
 
-# MongoDB에 연결
-client = MongoClient('mongodb://localhost:27017/')
-db = client['pdf_database']  # 데이터베이스 선택
-fs = gridfs.GridFS(db)  # GridFS 객체 생성
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def store_pdf(file_path):
-    """
-    PDF 파일을 MongoDB에 저장하는 함수
+class MongoDBHandler:
+    def __init__(self):
+        load_dotenv()
+        self.base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.mongodb_uri = os.getenv("MONGO_URI")
+        self.client = MongoClient(self.mongodb_uri)
+        self.db = self.client['research_db']
+        self.collection = self.db['reports']
+        
+        # 문서 수 확인
+        doc_count = self.collection.count_documents({})
+        logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
 
-    :param file_path: 저장할 PDF 파일의 경로
-    """
-    if not os.path.exists(file_path):
-        print(f"파일이 존재하지 않습니다: {file_path}")
-        return
+    def download_pdf(self, output_dir: str = 'data/pdf', limit: int = 10) -> bool:
+        output_dir = os.path.join(self.base_dir, output_dir)
+        try:
+            # 출력 디렉토리 생성
+            os.makedirs(output_dir, exist_ok=True)
 
-    with open(file_path, 'rb') as f:
-        file_data = f.read()
-        # 파일 이름을 사용하여 GridFS에 파일 저장
-        fs.put(file_data, filename=os.path.basename(file_path))
-    print(f"{file_path} 저장 완료")
+            # MongoDB에서 10개의 문서만 조회
+            documents = list(self.collection.find({}).limit(limit))
+            logger.info(f"가져온 문서 수: {len(documents)}")
 
-def retrieve_pdf(file_name, output_path):
-    """
-    MongoDB에서 PDF 파일을 가져오는 함수
+            for doc in documents:
+                report_id = str(doc['report_id'])
+                output_path = os.path.join(output_dir, f"{report_id}.pdf")
+                
+                # PDF 링크가 없는 경우 로그 출력 후 다음 문서로 넘어감
+                if 'pdf_link' not in doc:
+                    logger.warning(f"PDF 링크 없음: report_id {report_id}")
+                    continue
 
-    :param file_name: 가져올 PDF 파일의 이름
-    :param output_path: 저장할 경로
-    """
-    # 파일 이름으로 GridFS에서 파일 검색
-    file_data = fs.find_one({'filename': file_name})
-    if file_data:
-        with open(output_path, 'wb') as f:
-            f.write(file_data.read())
-        print(f"{file_name} 가져오기 완료")
-    else:
-        print(f"{file_name}을(를) 찾을 수 없습니다.")
+                logger.info(f"다운로드 시도: {doc['pdf_link']}")
+                
+                # PDF 다운로드 시도
+                try:
+                    response = requests.get(
+                        doc['pdf_link'],
+                        headers={ # 브라우저처럼 보이게 하는 헤더
+                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                        },
+                        timeout=30 # 30초 타임아웃
+                    )
+                    response.raise_for_status()
+                    
+                    # PDF 파일 저장
+                    with open(output_path, 'wb') as f:
+                        f.write(response.content)
+                    logger.info(f"다운로드 완료: {output_path}")
+                
+                except requests.RequestException as e:
+                    logger.error(f"다운로드 실패 (report_id: {report_id}): {str(e)}")
+                    continue
 
-# 예제 사용
-store_pdf('data/pdf/sample.pdf')  # PDF 파일 저장
-retrieve_pdf('sample.pdf', 'data/pdf/retrieved_sample.pdf')  # PDF 파일 가져오기
+            return True
+
+        except Exception as e:
+            logger.error(f"처리 중 오류 발생: {e}")
+            return False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.client.close()
+
+if __name__ == '__main__':
+    with MongoDBHandler() as handler:
+        handler.download_pdf(limit=10)  # 10개의 문서만 처리
