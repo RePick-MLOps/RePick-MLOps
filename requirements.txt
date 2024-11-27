@@ -14,4 +14,11 @@ flask
 flask-cors
 fastapi
 uvicorn
-openai
+langchain
+langchain-openai
+langchain-community
+chromadb
+tqdm
+pydantic
+sentence-transformers
+pymupdf
