@@ -21,8 +21,8 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t jeonghyeran/rp-chatbot:v1.2 .
+          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chatbot:v1.3 .
 
       - name: Push Docker Image
         run: |
-          docker push jeonghyeran/rp-chatbot:v1.2
+          docker push jeonghyeran/rp-chatbot:v1.3
