@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
 import os
+import json
 import chromadb
 from tqdm import tqdm
 from pathlib import Path
@@ -152,17 +153,19 @@ def process_pdf_directory(
         collection_name (str, optional): 저장할 컬렉션 이름
     """
     # 이미 처리된 PDF 파일 목록을 저장할 파일 경로
-    processed_files_path = Path(vector_store.persist_directory) / "processed_files.txt"
+    processed_states_path = (
+        Path(vector_store.persist_directory) / "processed_states.json"
+    )
 
-    # 이미 처리된 파일 목록 로드
-    processed_files = set()
-    if processed_files_path.exists():
-        with open(processed_files_path, "r", encoding="utf-8") as f:
-            processed_files = set(f.read().splitlines())
+    # 처리된 상태 로드
+    processed_states = {}
+    if processed_states_path.exists():
+        with open(processed_states_path, "r", encoding="utf-8") as f:
+            processed_states = json.load(f)
 
     # 새로운 PDF 파일 찾기
     pdf_files = list(Path(pdf_dir).glob("*.pdf"))
-    new_pdf_files = [pdf for pdf in pdf_files if str(pdf) not in processed_files]
+    new_pdf_files = [pdf for pdf in pdf_files if pdf.name not in processed_states]
 
     if not new_pdf_files:
         print("처리할 새로운 PDF 파일이 없습니다.")
@@ -177,9 +180,15 @@ def process_pdf_directory(
             vector_store.add_documents(
                 documents=documents, collection_name=collection_name
             )
-            # 처리 완료된 파일 기록
-            with open(processed_files_path, "a", encoding="utf-8") as f:
-                f.write(f"{str(pdf_path)}\n")
+            # 벡터스토어 처리 상태만 기록
+            if pdf_path.name not in processed_states:
+                processed_states[pdf_path.name] = {"vectorstore_processed": True}
+            else:
+                processed_states[pdf_path.name]["vectorstore_processed"] = True
+
+            # 상태 저장
+            with open(processed_states_path, "w", encoding="utf-8") as f:
+                json.dump(processed_states, f, ensure_ascii=False, indent=2)
 
             print(f"완료: {pdf_path}")
 
