@@ -3,7 +3,7 @@ name: Docker Build and Push with Secrets
 on:
   push:
     branches:
-      - "*"
+      - "WQKY-168-docker-images-241128"
 
 jobs:
   build:
