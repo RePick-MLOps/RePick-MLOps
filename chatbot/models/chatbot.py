@@ -6,25 +6,38 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
 from tools import initialize_tools
-from agents import ChatHistoryManager
+from agents import chat_manager  # 전역 인스턴스 사용
 from prompts import initialize_prompts
+from langchain.callbacks import LangChainTracer
 
 import logging
+import os
+from dotenv import load_dotenv
 
-# logger 설정
+# 환경 변수 로드
+load_dotenv()
+
+# logger 설정 / 디버깅, 경고, 에러를 기록하며 디버깅을 편하게 해준다.
 logger = logging.getLogger(__name__)
 
 
 class ChatAgent:
     def __init__(self, vectorstore):
         self.vectorstore = vectorstore
+        self.chat_history = chat_manager  # 전역 인스턴스 사용
+        
+        # 프로젝트 이름을 환경 변수에서 가져옴
+        self.project_name = os.getenv("LANGCHAIN_PROJECT", "default_project")
+        
+        # LangSmith 트레이서 설정
+        self.tracer = LangChainTracer(
+            project_name=self.project_name
+        )
         self.setup_agent()
 
     def validate_input(self, input_data):
-        required_keys = ["input", "session_id"]
-        for key in required_keys:
-            if key not in input_data:
-                raise ValueError(f"입력 데이터에 '{key}'가 누락되었습니다.")
+        if "input" not in input_data:
+            raise ValueError(f"입력 데이터에 'input'이 누락되었습니다.")
 
     def setup_agent(self):
         # 도구 초기화
@@ -38,7 +51,10 @@ class ChatAgent:
             model_name="gpt-4",
             streaming=True,
             temperature=0,
-            callbacks=[StreamingStdOutCallbackHandler()],
+            callbacks=[
+                StreamingStdOutCallbackHandler(),
+                self.tracer  # LangSmith 트레이서 추가
+            ],
         )
 
         # Agent 생성
@@ -49,20 +65,21 @@ class ChatAgent:
             verbose=True,
             handle_parsing_errors=True,
         )
-
-        # 채팅 기록 관리자 설정
-        chat_history_manager = ChatHistoryManager()
-        self.agent_with_chat_history = chat_history_manager.create_agent_with_history(
-            self.agent_executor
-        )
+        
+        # RunnableWithMessageHistory로 agent_executor 래핑
+        self.agent_executor = self.chat_history.create_agent_with_history(self.agent_executor)
 
     def invoke_agent(self, input_data):
         try:
             self.validate_input(input_data)
-            return self.agent_with_chat_history.invoke(
-                {"input": input_data["input"]},
-                {"configurable": {"session_id": input_data["session_id"]}},
-            )
+            
+            # 단순히 input만 전달 (chat_history는 자동으로 처리됨)
+            response = self.agent_executor.invoke({
+                "input": input_data["input"]
+            })
+            
+            return response
+            
         except ValueError as ve:
             logger.error(f"입력 값 검증 실패: {str(ve)}")
             raise
@@ -78,7 +95,7 @@ class ChatAgentError(Exception):
 if __name__ == "__main__":
     # 허깅페이스 임베딩 모델 초기화
     embedding_model = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        model_name="jhgan/ko-sbert-sts",
     )
 
     # Chroma vectorstore 불러오기
@@ -90,5 +107,5 @@ if __name__ == "__main__":
     # ChatAgent 생성 및 실행
     chat_agent = ChatAgent(vectorstore)
     response = chat_agent.invoke_agent(
-        {"input": "안녕하세요, 당신은 누구인가요?", "session_id": "test_session"}
+        {"input": "안녕하세요, 당신은 누구인가요?"}
     )
