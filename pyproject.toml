@@ -1,8 +1,8 @@
 [tool.poetry]
-name = "langchain-kr"
+name = "RePick"
 version = "0.1.1"
-description = "Ultimate LangChain Tutorial written in Korean by TeddyNote."
-authors = ["teddy <teddylee777@gmail.com>"]
+description = "RePick"
+authors = ["RePick"]
 license = "MIT"
 readme = "README.md"
 package-mode = false
@@ -49,8 +49,12 @@ faiss-cpu = "1.8.0"
 pandas = "^2.2.2"
 rank-bm25 = "^0.2.2"
 
+# 검색 도구 관련
+tavily-python = "^0.3.1"
+
 # 데이터베이스 및 캐시 관련 패키지
 redis = "^5.0.3"
+sentence-transformers = "^2.5.1"
 chromadb = "0.4.22"
 
 # PDF 및 파일 처리 관련 패키지
