@@ -18,6 +18,8 @@ data/*
 data/pdf/*
 data/vectordb/*
 data/logs/*
+filtering_model/data/*
+!filtering_model/data/.gitkeep
 !data/pdf/.gitkeep
 !data/vectordb/.gitkeep
 !data/logs/.gitkeep
