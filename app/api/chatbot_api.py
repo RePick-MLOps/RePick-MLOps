@@ -1,84 +1,69 @@
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import json
-from pathlib import Path
-from app.chatbot import DocumentChatbot
-from src.vectorstore import VectorStore
-from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from chatbot.models.chatbot import ChatAgent
+import uvicorn
+import logging
+
+# logger 설정
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="RePick Chatbot API")
 
 
-# APIRouter 인스턴스 생성
-router = APIRouter()
+# Pydantic 모델 정의
+class ChatInput(BaseModel):
+    input: str
+    session_id: str
 
 
-class QueryRequest(BaseModel):
-    query: str
+class ChatResponse(BaseModel):
+    response: str
 
 
-# 챗봇 초기화
-chatbot = None
-
-
-def initialize_chatbot():
-    global chatbot
-    if chatbot is None:
-        # 벡터스토어 로드
-        vector_store = VectorStore(persist_directory="./data/vectordb")
-
-        # 처리된 상태 로드
-        processed_states_path = Path("./data/vectordb/processed_states.json")
-        with open(processed_states_path, "r", encoding="utf-8") as f:
-            processed_states = json.load(f)
-
-        # 모든 문서 준비
-        documents = []
-        for pdf_state in processed_states.values():
-            # 텍스트 요약 추가
-            for page, summary in pdf_state["text_summary"].items():
-                documents.append(
-                    Document(
-                        page_content=summary,
-                        metadata={"type": "text_summary", "page": page},
-                    )
-                )
-
-            # 이미지 요약 추가
-            for image_id, summary in pdf_state["image_summary"].items():
-                documents.append(
-                    Document(
-                        page_content=summary,
-                        metadata={"type": "image_summary", "id": image_id},
-                    )
-                )
-
-            # 테이블 요약 추가
-            for table_id, summary in pdf_state["table_summary"].items():
-                documents.append(
-                    Document(
-                        page_content=summary,
-                        metadata={"type": "table_summary", "id": table_id},
-                    )
-                )
-
-        # 챗봇 초기화
-        chatbot = DocumentChatbot(documents, "./data/vectordb")
-
-
-@router.post("/chatbot")
-async def query(request: QueryRequest):
+# 전역 변수로 ChatAgent 초기화
+def initialize_chat_agent():
     try:
-        global chatbot
-        # 챗봇이 초기화되지 않았다면 초기화
-        if chatbot is None:
-            initialize_chatbot()
+        embedding_model = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        )
 
-        # 질문에 대한 답변 생성
-        response = chatbot.chat(request.query)
-        return {"response": response}
+        vectorstore = Chroma(
+            persist_directory="/Users/naeun/working/RePick-MLOps/data/vectordb",
+            embedding_function=embedding_model,
+        )
+
+        return ChatAgent(vectorstore)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        logger.error(f"ChatAgent 초기화 중 오류 발생: {str(e)}")
+        raise
 
 
-@router.get("/ping")
-async def ping():
-    return {"message": "Hello from chatbot!"}
+chat_agent = initialize_chat_agent()
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(chat_input: ChatInput):
+    try:
+        logger.info(f"Received chat request: {chat_input}")
+        response = chat_agent.invoke_agent(
+            {"input": chat_input.input, "session_id": chat_input.session_id}
+        )
+        logger.info(f"Generated response: {response}")
+        return ChatResponse(response=response)
+    except Exception as e:
+        logger.error(f"Chat processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
+
+
+if __name__ == "__main__":
+    uvicorn.run("app.api.chatbot_api:app", host="0.0.0.0", port=8000, reload=True)
