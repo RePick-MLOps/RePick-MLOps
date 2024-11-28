@@ -1,52 +1,81 @@
 from dotenv import load_dotenv
+
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 import chromadb
 from chromadb.config import Settings
 import os
+from typing import List
+from langchain.docstore.document import Document
+from langchain.prompts import PromptTemplate
+from langchain_community.chat_models import ChatOpenAI
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain.tools.retriever import create_retriever_tool
+from langchain.prompts import PromptTemplate
 
 
 load_dotenv()
 
 
 class DocumentChatbot:
-    def __init__(self, persist_directory, documents=None, model_name="jhgan/ko-sbert-nli"):
-    try:
+    def __init__(
+        self,
+        persist_directory: str,
+        documents: List[Document] = None,
+        model_name: str = "jhgan/ko-sbert-sts",
+    ):
+        """
+        챗봇 초기화
+
+        Args:
+            persist_directory (str): 벡터스토어 저장 경로
+            model_name (str): HuggingFace 임베딩 모델 이름
+        """
         print(f"벡터스토어 디렉토리 확인: {persist_directory}")
-        persist_directory = os.path.abspath(persist_directory)
-        
-        self.embedding_model = HuggingFaceEmbeddings(model_name=model_name)
-        
-        # 새로운 ChromaDB 클라이언트 설정
-        chroma_client = chromadb.PersistentClient(
-            path=persist_directory,
-            settings=chromadb.Settings(
-                anonymized_telemetry=False,
-                is_persistent=True
-            )
-        )
-        
-        if documents is not None:
-            print("새로운 벡터스토어 생성...")
-            self.vectorstore = self._create_new_vectorstore(documents, chroma_client)
-        else:
-            try:
+
+        # 임베딩 모델 초기화
+        self.embedding = HuggingFaceEmbeddings(model_name=model_name)
+
+        try:
+            if documents:
+                print("새로운 벡터스토어 생성...")
+                self.vectorstore = Chroma.from_documents(
+                    documents=documents,
+                    embedding_function=self.embedding,
+                    persist_directory=persist_directory,
+                )
+                print("벡터스토어 생성 완료")
+            else:
                 print("기존 벡터스토어 로드 시도...")
                 self.vectorstore = Chroma(
-                    client=chroma_client,
-                    embedding_function=self.embedding_model,
-                    collection_name="document_store"
+                    persist_directory=persist_directory,
+                    embedding_function=self.embedding,
                 )
-                collection_count = self.vectorstore._collection.count()
-                print(f"벡터스토어 항목 수: {collection_count}")
-                if collection_count == 0:
-                    raise ValueError("벡터스토어가 비어있습니다.")
-            except Exception as e:
-                print(f"기존 벡터스토어 로드 실패: {str(e)}")
-                raise ValueError("벡터스토어 로드 실패 및 documents가 제공되지 않았습니다.")
-                
-    except Exception as e:
-        raise Exception(f"벡터스토어 초기화 중 오류: {str(e)}")
+                print("벡터스토어 로드 완료")
+
+            # 리트리버 및 체인 설정
+            self.setup_retrievers()
+            self.setup_relevance_checker()
+            self.setup_chain()
+
+        except Exception as e:
+            raise Exception(f"벡터스토어 초기화 중 오류: {str(e)}")
+
+    def setup_retrievers(self):
+        """리트리버 설정"""
+        self.retriever = self.vectorstore.as_retriever(
+            search_type="similarity", search_kwargs={"k": 4}
+        )
+        self.tools = self._create_tools()
+
+    def setup_relevance_checker(self):
+        """관련성 체커 설정"""
+        self.prompt = self._create_prompt()
+
+    def setup_chain(self):
+        """체인 설정"""
+        self.agent_executor = self._create_agent_executor()
 
     def _create_new_vectorstore(self, documents, chroma_client):
         print("새로운 벡터스토어 생성...")
@@ -144,11 +173,26 @@ class DocumentChatbot:
 
         Begin!
 
-        placeholder: "{chat_history | []}"
-        Question: "{input}"
-        Thought: "{agent_scratchpad}"
+        Question: {input}
+        {agent_scratchpad}
         """
         return PromptTemplate.from_template(template)
+
+        prompt = PromptTemplate(
+            template=template,
+            input_variables=["input", "agent_scratchpad"],
+            partial_variables={
+                "tools": self._get_tool_descriptions(),
+                "tool_names": self._get_tool_names(),
+            },
+        )
+        return prompt
+
+    def _get_tool_descriptions(self):
+        return "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
+
+    def _get_tool_names(self):
+        return ", ".join([tool.name for tool in self.tools])
 
     def _create_agent_executor(self):
         llm = ChatOpenAI(
@@ -167,10 +211,8 @@ class DocumentChatbot:
 
     def chat(self, query: str) -> str:
         try:
-            docs = self.vectorstore.similarity_search(query)
-            if not docs:
-                return "관련된 정보를 찾을 수 없습니다."
-            response = "\n".join([doc.page_content for doc in docs])
-            return response
+            # agent_executor를 사용하여 질문 처리
+            response = self.agent_executor.invoke({"input": query})
+            return response["output"]
         except Exception as e:
             raise Exception(f"채팅 처리 중 오류 발생: {str(e)}")

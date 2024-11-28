@@ -37,6 +37,11 @@ class MongoDBHandler:
                 report_id = str(doc["report_id"])
                 output_path = os.path.join(output_dir, f"{report_id}.pdf")
 
+                # 파일이 이미 존재하는지 확인
+                if os.path.exists(output_path):
+                    logger.info(f"파일이 이미 존재함: {output_path}")
+                    continue
+
                 # PDF 링크가 없는 경우 로그 출력 후 다음 문서로 넘어감
                 if "pdf_link" not in doc:
                     logger.warning(f"PDF 링크 없음: report_id {report_id}")
@@ -79,4 +84,4 @@ class MongoDBHandler:
 
 if __name__ == "__main__":
     with MongoDBHandler() as handler:
-        handler.download_pdf(limit=10)  # 10개의 문서만 처리
+        handler.download_pdf(limit=5)  # 3개의 문서만 처리

@@ -1,5 +1,6 @@
 import re
 import sys
+import time
 import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -8,27 +9,34 @@ from pathlib import Path
 from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 
 def load_processed_states():
     """처리된 PDF 파일 목록을 로드합니다."""
-    processed_files = set()
-    if os.path.exists("data/vectordb/processed_files.txt"):
-        with open("data/vectordb/processed_files.txt", "r", encoding="utf-8") as f:
-            for line in f:
-                # 파일 경로에서 파일명만 추출
-                filename = os.path.basename(line.strip())
-                processed_files.add(filename)
-    return processed_files
+    processed_states_path = Path("./data/vectordb/processed_states.json")
+    if processed_states_path.exists():
+        with open(processed_states_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
 
-def is_original_pdf(filename: str, processed_files: set) -> bool:
+def is_original_pdf(filename: str, processed_states: dict) -> bool:
     """원본 PDF 파일이면서 아직 처리되지 않은 파일인지 확인합니다."""
-    if filename in processed_files:
+    if filename in processed_states:
         return False
 
     split_pattern = r"_\d{4}_\d{4}\.pdf$"
     return filename.endswith(".pdf") and not re.search(split_pattern, filename)
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def process_single_pdf_with_retry(pdf_path):
+    """PDF 처리를 재시도 로직과 함께 실행합니다."""
+    state = process_single_pdf(pdf_path)
+    if state is None:
+        raise ValueError(f"PDF 처리 실패: {pdf_path}")
+    return state
 
 
 def process_new_pdfs():
@@ -36,30 +44,20 @@ def process_new_pdfs():
     pdf_directory = "./data/pdf"
     processed_states_path = Path("./data/vectordb/processed_states.json")
 
-    # 1. 이전에 처리된 상태 로드
-    if processed_states_path.exists():
-        with open(processed_states_path, "r", encoding="utf-8") as f:
-            processed_states = json.load(f)
-    else:
-        processed_states = {}
+    # 처리된 상태 로드
+    processed_states = load_processed_states()
 
-    # processed_files 로드
-    processed_files = load_processed_states()
-
-    # 2. 새로운 원본 PDF 파일만 필터링
+    # 새로운 원본 PDF 파일만 필터링
     pdf_files = [
-        f
-        for f in os.listdir(pdf_directory)
-        if is_original_pdf(f, processed_files) and f not in processed_states
+        f for f in os.listdir(pdf_directory) if is_original_pdf(f, processed_states)
     ]
 
     print(f"처리할 새로운 PDF 파일: {len(pdf_files)}개")
 
-    # 3. 새로운 파일들 처리
     if pdf_files:
         print(f"새로운 PDF 파일 {len(pdf_files)}개를 처리합니다.")
 
-        # 3.1 벡터 DB에 저장
+        # 벡터 DB에 저장
         vector_store = VectorStore(persist_directory="./data/vectordb")
         process_pdf_directory(
             vector_store=vector_store,
@@ -67,30 +65,38 @@ def process_new_pdfs():
             collection_name="pdf_collection",
         )
 
-        # 3.2 각 파일 파싱 및 요약
+        # 각 파일 파싱 및 요약
         for pdf_file in pdf_files:
             try:
                 pdf_path = os.path.join(pdf_directory, pdf_file)
                 state = process_single_pdf(pdf_path)
 
-                # GraphState 객체에서 필요한 정보 추출
+                # 상태 정보 업데이트
                 state_dict = {
                     "text_summary": state.get("text_summary", {}),
                     "image_summary": state.get("image_summary", {}),
                     "table_summary": state.get("table_summary", {}),
                     "table_markdown": state.get("table_markdown", {}),
                     "page_summary": state.get("page_summary", {}),
+                    "parsing_processed": True,  # 파싱 완료 표시
                 }
 
-                # 디버깅을 위한 로깅 추가
+                # 기존 상태 정보와 병합
+                if pdf_file in processed_states:
+                    processed_states[pdf_file].update(state_dict)
+                else:
+                    processed_states[pdf_file] = state_dict
+
+                print(f"처리 완료: {pdf_file}")
                 print(f"텍스트 요약 수: {len(state_dict['text_summary'])}")
                 print(f"이미지 요약 수: {len(state_dict['image_summary'])}")
                 print(f"테이블 요약 수: {len(state_dict['table_summary'])}")
                 print(f"테이블 마크다운 수: {len(state_dict['table_markdown'])}")
                 print(f"페이지 요약 수: {len(state_dict['page_summary'])}")
 
-                processed_states[pdf_file] = state_dict
-                print(f"처리 완료: {pdf_file}")
+                # 각 처리 단계마다 상태 저장
+                with open(processed_states_path, "w", encoding="utf-8") as f:
+                    json.dump(processed_states, f, ensure_ascii=False, indent=2)
 
             except Exception as e:
                 print(f"처리 실패 ({pdf_file}): {str(e)}")
