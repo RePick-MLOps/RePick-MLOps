@@ -8,6 +8,6 @@ COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY chatbot_api ./chatbot_api
+COPY myapp.py .
 
-CMD ["uvicorn", "chatbot_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "myapp:app", "--host", "0.0.0.0", "--port", "8000"]
