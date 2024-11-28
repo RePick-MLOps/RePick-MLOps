@@ -1,97 +1,67 @@
+import gradio as gr
+from filtering import load_user_data, recommend_similar_reports
 import pandas as pd
-from sklearn.preprocessing import MultiLabelBinarizer
-from sklearn.metrics.pairwise import cosine_similarity
 
-def load_user_data(json_path):
-    """사용자 데이터를 로드하고 전처리하는 함수"""
-    user_data = pd.read_json(json_path)
-    
-    # 필요한 컬럼만 선택
-    user_data = user_data[['userId', 'gender', 'age', 'reports', 
-                           'preferredIndustries', 'preferredCompanies', 'bookmark', 'downLoad', 'recentReports']]
 
-    return user_data
+class ReportRecommenderBot:
+    def __init__(self):
+        """챗봇 초기화 및 사용자 데이터 로드"""
+        self.user_data = load_user_data("chain_model/data/user_data-100.json")
+        self.current_user_id = None
 
-def create_report_features(pdf_dir):
-    """PDF 문서들의 특징을 추출하는 함수"""
-    # PDF 문서들의 메타데이터 로드 (industry, company 등)
-    # 실제 구현시에는 PDF에서 메타데이터를 추출하는 로직 필요
-    report_data = pd.DataFrame({
-        'report_id': [],
-        'industry': [],
-        'company': []
-    })
+    def get_user_preferences(self, user_id):
+        """사용자 ID로 선호도 정보 조회"""
+        try:
+            user = self.user_data[self.user_data["userId"] == user_id].iloc[0]
+            return user
+        except IndexError:
+            return None
 
-# 산업군과 종목에 대한 이진 인코딩
-mlb_industry = MultiLabelBinarizer()
-mlb_stock = MultiLabelBinarizer()
+    def chat(self, message, history):
+        """챗봇 대화 처리"""
+        # 사용자 ID 입력 확인
+        if "내 아이디는" in message or "ID는" in message:
+            user_id = message.split()[-1]
+            user = self.get_user_preferences(user_id)
 
-user_industry_encoded = mlb_industry.fit_transform(user_data['preferred_industries'])
-user_stock_encoded = mlb_stock.fit_transform(user_data['preferred_stocks'])
+            if user is not None:
+                self.current_user_id = user_id
+                industries = ", ".join(user["preferredIndustries"])
+                companies = ", ".join(user["preferredCompanies"])
+                return f"환영합니다! 선호하시는 산업군은 {industries}이고, 관심 기업은 {companies}입니다. 어떤 리포트를 추천해드릴까요?"
+            else:
+                return "죄송합니다. 해당 사용자 ID를 찾을 수 없습니다."
 
-# 사용자 데이터에 인코딩된 특징 추가
-user_features = pd.concat([
-    user_data[['user_id', 'gender', 'age']],
-    pd.DataFrame(user_industry_encoded, columns=mlb_industry.classes_),
-    pd.DataFrame(user_stock_encoded, columns=mlb_stock.classes_)
-], axis=1)
+        # 리포트 추천 요청
+        if "추천" in message and self.current_user_id:
+            user_preferences = self.get_user_preferences(self.current_user_id)
+            recommended_reports = recommend_similar_reports(user_preferences)
 
-from sklearn.metrics.pairwise import cosine_similarity
+            response = "다음 리포트들을 추천드립니다:\n"
+            for i, report in enumerate(recommended_reports, 1):
+                response += f"{i}. {report['title']}\n"
+            return response
 
-# 리포트 데이터에 대한 이진 인코딩
-report_industry_encoded = mlb_industry.transform(report_data['industry'].apply(lambda x: [x]))
-report_stock_encoded = mlb_stock.transform(report_data['stock'].apply(lambda x: [x]))
+        # 기본 응답
+        if not self.current_user_id:
+            return "사용자 ID를 알려주세요. '내 아이디는 [ID]' 형식으로 입력해주세요."
+        return "리포트 추천을 원하시면 '리포트 추천해줘'라고 말씀해주세요."
 
-# 사용자 데이터에 인코딩된 특징 추가
-user_features = pd.concat([
-    user_data[['user_id', 'gender', 'age']],
-    pd.DataFrame(user_industry_encoded, columns=mlb_industry.classes_),
-    pd.DataFrame(user_stock_encoded, columns=mlb_stock.classes_)
-], axis=1).fillna(0)  # NaN 값을 0으로 대체
 
-# 리포트 데이터에 인코딩된 특징 추가
-report_features = pd.concat([
-    report_data[['report_id']],
-    pd.DataFrame(report_industry_encoded, columns=mlb_industry.classes_),
-    pd.DataFrame(report_stock_encoded, columns=mlb_stock.classes_)
-], axis=1).fillna(0)  # NaN 값을 0으로 대체
+# Gradio 인터페이스 생성
+def create_chatbot():
+    bot = ReportRecommenderBot()
 
-from src.vectorstore import VectorStore
-
-def recommend_similar_reports(user_preferences: str, top_k: int = 5):
-    """사용자 선호도를 바탕으로 유사한 리포트 추천"""
-    
-    # 벡터스토어 초기화
-    vector_store = VectorStore(persist_directory="./data/vectordb")
-    
-    # 사용자 선호도를 쿼리로 사용하여 유사한 문서 검색
-    # 예: 선호 산업군과 기업을 문자열로 변환
-    query = f"{' '.join(user_preferences['preferredIndustries'])} {' '.join(user_preferences['preferredCompanies'])}"
-    
-    similar_docs = vector_store.similarity_search(
-        query=query,
-        k=top_k,
-        collection_name="pdf_collection"
+    interface = gr.ChatInterface(
+        bot.chat,
+        title="리포트 추천 챗봇",
+        description="사용자 맞춤 리포트 추천 서비스입니다. 시작하려면 '내 아이디는 [ID]'를 입력해주세요.",
+        theme="soft",
     )
-    
-    return similar_docs
 
-recommended_reports = recommend_similar_reports(user_preferences)
+    return interface
 
-# 사용자와 리포트 간의 유사도 계산
-user_report_similarity = cosine_similarity(user_features.drop(['user_id', 'gender', 'age'], axis=1), report_features.drop('report_id', axis=1))
 
-# 추천 결과 생성
-def recommend_reports(user_id, top_n=5):
-    user_idx = user_data[user_data['user_id'] == user_id].index[0]
-    similar_reports_idx = user_report_similarity[user_idx].argsort()[-top_n:][::-1]
-    return report_data.iloc[similar_reports_idx]['report_id'].tolist()
-
-# 예시: 사용자 1에게 추천할 리포트
-recommended_reports = recommend_reports(user_id=1)
-print(recommended_reports)
-
-# 사용 예시
-user_id = "1"
-user_data = load_user_data("chain_model/data/user_data-100.json")
-user_preferences = user_data[user_data['userId'] == user_id].iloc[0]
+if __name__ == "__main__":
+    chatbot = create_chatbot()
+    chatbot.launch()

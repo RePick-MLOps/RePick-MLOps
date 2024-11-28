@@ -1,13 +1,13 @@
 # 필요한 도구들 import
 from langchain.chat_models import ChatOpenAI
-from langchain.callbacks import (
-    StreamingStdOutCallbackHandler,
-)  # AI의 응답을 실시간으로 보여주는 도구
+from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.agents import create_react_agent, AgentExecutor
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
 
-from tools import initialize_tools  # 도구 초기화 함수 추가
-from agents import ChatHistoryManager  # 채팅 기록 관리자 추가
-from prompts import initialize_prompts  # 프롬프트 초기화 함수 추가
+from tools import initialize_tools
+from agents import ChatHistoryManager
+from prompts import initialize_prompts
 
 import logging
 
@@ -20,12 +20,8 @@ class ChatAgent:
         self.vectorstore = vectorstore
         self.setup_agent()
 
-    # 사용자의 입력에 필수 필드가 존재하는지 검증
     def validate_input(self, input_data):
-        required_keys = [
-            "input",
-            "session_id",
-        ]  # 사용자의 실제 질문, 대화 세션을 구분하는 고유 식별자
+        required_keys = ["input", "session_id"]
         for key in required_keys:
             if key not in input_data:
                 raise ValueError(f"입력 데이터에 '{key}'가 누락되었습니다.")
@@ -37,7 +33,7 @@ class ChatAgent:
         # 프롬프트 초기화
         self.prompt = initialize_prompts()
 
-        # 프롬프트 및 LLM 설정
+        # LLM 설정
         self.llm = ChatOpenAI(
             model_name="gpt-4",
             streaming=True,
@@ -63,7 +59,10 @@ class ChatAgent:
     def invoke_agent(self, input_data):
         try:
             self.validate_input(input_data)
-            return self.agent_with_chat_history.invoke(input_data)
+            return self.agent_with_chat_history.invoke(
+                {"input": input_data["input"]},
+                {"configurable": {"session_id": input_data["session_id"]}},
+            )
         except ValueError as ve:
             logger.error(f"입력 값 검증 실패: {str(ve)}")
             raise
@@ -73,26 +72,19 @@ class ChatAgent:
 
 
 class ChatAgentError(Exception):
-    """챗봇 에이전트 관련 커스텀 예외"""
-
     pass
 
 
-# 사용 예시
 if __name__ == "__main__":
-    from langchain.embeddings import HuggingFaceEmbeddings
-    from langchain.vectorstores import Chroma
-
     # 허깅페이스 임베딩 모델 초기화
-    # 사용자의 질문과 문서를 같은 벡터 공간으로 변환하여 유사도 검색을 가능하게 함
     embedding_model = HuggingFaceEmbeddings(
-        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",  # 다국어 지원 모델 예시
-        # model_kwargs={'device': 'cuda'}  # GPU 사용 시
+        model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
     )
 
     # Chroma vectorstore 불러오기
     vectorstore = Chroma(
-        persist_directory="path/to/your/chroma_db", embedding_function=embedding_model
+        persist_directory="/Users/naeun/working/RePick-MLOps/data/vectordb",
+        embedding_function=embedding_model,
     )
 
     # ChatAgent 생성 및 실행

@@ -23,5 +23,6 @@ def create_prompt_template():
     Thought: 필요한 데이터를 충분히 수집했거나, 더 이상 유효한 결과를 찾을 수 없음을 판단합니다.
     Final Answer: 원래 질문에 대한 최종 답변을 작성하세요.
 
-    Begin!
+    Question: {input}
+    {agent_scratchpad}
     """

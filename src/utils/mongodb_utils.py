@@ -29,18 +29,27 @@ class MongoDBHandler:
             # 출력 디렉토리 생성
             os.makedirs(output_dir, exist_ok=True)
 
-            # MongoDB에서 limit의 문서만 조회
-            documents = list(self.collection.find({}).limit(limit))
-            logger.info(f"가져온 문서 수: {len(documents)}")
+            # 이미 다운로드된 파일들의 report_id 목록 생성
+            existing_files = {
+                os.path.splitext(f)[0]
+                for f in os.listdir(output_dir)
+                if f.endswith(".pdf")
+            }
+            logger.info(f"이미 존재하는 PDF 파일 수: {len(existing_files)}")
 
-            for doc in documents:
+            # MongoDB에서 아직 다운로드되지 않은 문서들만 조회
+            downloaded_count = 0
+            cursor = self.collection.find({})
+
+            for doc in cursor:
+                if downloaded_count >= limit:
+                    break
+
                 report_id = str(doc["report_id"])
-                output_path = os.path.join(output_dir, f"{report_id}.pdf")
-
-                # 파일이 이미 존재하는지 확인
-                if os.path.exists(output_path):
-                    logger.info(f"파일이 이미 존재함: {output_path}")
+                if report_id in existing_files:
                     continue
+
+                output_path = os.path.join(output_dir, f"{report_id}.pdf")
 
                 # PDF 링크가 없는 경우 로그 출력 후 다음 문서로 넘어감
                 if "pdf_link" not in doc:
@@ -53,10 +62,10 @@ class MongoDBHandler:
                 try:
                     response = requests.get(
                         doc["pdf_link"],
-                        headers={  # 브라우저처럼 보이게 하는 헤더
+                        headers={
                             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
                         },
-                        timeout=30,  # 30초 타임아웃
+                        timeout=30,
                     )
                     response.raise_for_status()
 
@@ -64,11 +73,13 @@ class MongoDBHandler:
                     with open(output_path, "wb") as f:
                         f.write(response.content)
                     logger.info(f"다운로드 완료: {output_path}")
+                    downloaded_count += 1
 
                 except requests.RequestException as e:
                     logger.error(f"다운로드 실패 (report_id: {report_id}): {str(e)}")
                     continue
 
+            logger.info(f"새로 다운로드한 PDF 파일 수: {downloaded_count}")
             return True
 
         except Exception as e:
@@ -84,4 +95,4 @@ class MongoDBHandler:
 
 if __name__ == "__main__":
     with MongoDBHandler() as handler:
-        handler.download_pdf(limit=5)  # 3개의 문서만 처리
+        handler.download_pdf(limit=5)  # 5개의 문서만 처리
