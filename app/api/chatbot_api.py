@@ -16,7 +16,7 @@ app = FastAPI(title="RePick Chatbot API")
 
 
 # Pydantic 모델 정의
-class ChatInput(BaseModel):
+class SendMessageRequest(BaseModel):
     input: str
     session_id: str
 
@@ -46,12 +46,12 @@ def initialize_chat_agent():
 chat_agent = initialize_chat_agent()
 
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(chat_input: ChatInput):
+@app.post("/api/v1/chat/sendMessage", response_model=ChatResponse)
+async def send_message(request: SendMessageRequest):
     try:
-        logger.info(f"Received chat request: {chat_input}")
+        logger.info(f"Received chat request: {request}")
         response = chat_agent.invoke_agent(
-            {"input": chat_input.input, "session_id": chat_input.session_id}
+            {"input": request.input, "session_id": request.session_id}
         )
         logger.info(f"Generated response: {response}")
         return ChatResponse(response=response)
@@ -60,9 +60,15 @@ async def chat_endpoint(chat_input: ChatInput):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+@app.get("/api/v1/chat/getResponse")
+async def get_response():
+    return {"status": "This endpoint is unnecessary without session management"}
+
+
+# 서버 상태 확인 /ping GET 엔드포인트
+@app.get("/ping")
+async def ping():
+    return {"status": "running"}
 
 
 if __name__ == "__main__":
