@@ -2,6 +2,7 @@ import re
 import sys
 import time
 import os
+import logging
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
@@ -10,6 +11,11 @@ from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 def load_processed_states():
@@ -43,8 +49,6 @@ def process_new_pdfs():
     """새로운 PDF 파일들을 처리하고 상태를 저장합니다."""
     pdf_directory = "./data/pdf"
     processed_states_path = Path("./data/vectordb/processed_states.json")
-
-    # 처리된 상태 로드
     processed_states = load_processed_states()
 
     # 새로운 원본 PDF 파일만 필터링
@@ -52,16 +56,17 @@ def process_new_pdfs():
         f for f in os.listdir(pdf_directory) if is_original_pdf(f, processed_states)
     ]
 
-    print(f"처리할 새로운 PDF 파일: {len(pdf_files)}개")
+    logger.info(f"처리할 새로운 PDF 파일: {len(pdf_files)}개")
+    logger.info(f"PDF 파일 목록: {pdf_files}")
 
     if pdf_files:
-        print(f"새로운 PDF 파일 {len(pdf_files)}개를 처리합니다.")
-
-        # 벡터 DB에 저장
+        # VectorStore 초기화
         vector_store = VectorStore(persist_directory="./data/vectordb")
+
+        # PDF 파일들을 벡터 DB에 저장
         process_pdf_directory(
             vector_store=vector_store,
-            pdf_dir="./data",
+            pdf_dir="./data",  # vectorstore.py에서 /pdf를 자동으로 추가함
             collection_name="pdf_collection",
         )
 
@@ -69,7 +74,11 @@ def process_new_pdfs():
         for pdf_file in pdf_files:
             try:
                 pdf_path = os.path.join(pdf_directory, pdf_file)
-                state = process_single_pdf(pdf_path)
+                state = process_single_pdf_with_retry(pdf_path)
+
+                if state is None:
+                    logger.error(f"PDF 처리 실패: {pdf_file}")
+                    continue
 
                 # 상태 정보 업데이트
                 state_dict = {
@@ -78,7 +87,8 @@ def process_new_pdfs():
                     "table_summary": state.get("table_summary", {}),
                     "table_markdown": state.get("table_markdown", {}),
                     "page_summary": state.get("page_summary", {}),
-                    "parsing_processed": True,  # 파싱 완료 표시
+                    "parsing_processed": True,
+                    "vectorstore_processed": True,
                 }
 
                 # 기존 상태 정보와 병합
@@ -87,24 +97,29 @@ def process_new_pdfs():
                 else:
                     processed_states[pdf_file] = state_dict
 
-                print(f"처리 완료: {pdf_file}")
-                print(f"텍스트 요약 수: {len(state_dict['text_summary'])}")
-                print(f"이미지 요약 수: {len(state_dict['image_summary'])}")
-                print(f"테이블 요약 수: {len(state_dict['table_summary'])}")
-                print(f"테이블 마크다운 수: {len(state_dict['table_markdown'])}")
-                print(f"페이지 요약 수: {len(state_dict['page_summary'])}")
+                logger.info(f"\n=== 처리 완료: {pdf_file} ===")
+                logger.info(f"텍스트 요약 수: {len(state_dict['text_summary'])}")
+                logger.info(f"이미지 요약 수: {len(state_dict['image_summary'])}")
+                logger.info(f"테이블 요약 수: {len(state_dict['table_summary'])}")
+                logger.info(f"테이블 마크다운 수: {len(state_dict['table_markdown'])}")
+                logger.info(f"페이지 요약 수: {len(state_dict['page_summary'])}")
 
-                # 각 처리 단계마다 상태 저장
+                # 상태 저장
                 with open(processed_states_path, "w", encoding="utf-8") as f:
                     json.dump(processed_states, f, ensure_ascii=False, indent=2)
 
             except Exception as e:
-                print(f"처리 실패 ({pdf_file}): {str(e)}")
+                logger.error(f"처리 실패 ({pdf_file}): {str(e)}")
                 continue
 
-        # 3.3 처리된 상태 저장
-        with open(processed_states_path, "w", encoding="utf-8") as f:
-            json.dump(processed_states, f, ensure_ascii=False, indent=2)
+        # 최종 상태 확인
+        try:
+            collection = vector_store.client.get_collection("pdf_collection")
+            logger.info(f"\n=== 최종 처리 결과 ===")
+            logger.info(f"최종 벡터 DB 문서 수: {collection.count()}")
+            logger.info(f"처리된 PDF 파일 수: {len(pdf_files)}")
+        except Exception as e:
+            logger.error(f"최종 상태 확인 중 오류: {str(e)}")
 
 
 if __name__ == "__main__":

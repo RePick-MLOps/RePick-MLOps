@@ -7,7 +7,7 @@ from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
@@ -74,10 +74,8 @@ class VectorStore:
             collection_name (str, optional): 컬렉션 이름
         """
         if collection_name:
-            # 컬렉션이 이미 존재하는지 확인
             try:
                 existing_collection = self.client.get_collection(collection_name)
-                # 기존 컬렉션이 있으면 문서만 추가
                 vectorstore = Chroma(
                     client=self.client,
                     collection_name=collection_name,
@@ -85,7 +83,6 @@ class VectorStore:
                 )
                 vectorstore.add_documents(documents)
             except ValueError:
-                # 컬렉션이 없으면 새로 생성
                 self.vectorstore = Chroma.from_documents(
                     documents=documents,
                     embedding=self.embedding,
@@ -96,8 +93,12 @@ class VectorStore:
         else:
             self.vectorstore.add_documents(documents)
 
-        # 변경사항 저장
-        self.vectorstore.persist()
+        # 변경된 부분: client를 통해 직접 persist
+        try:
+            self.client.persist()
+            print(f"컬렉션 '{collection_name}' 저장 완료")
+        except Exception as e:
+            print(f"저장 중 오류 발생: {str(e)}")
 
     def similarity_search(
         self, query: str, k: int = 4, collection_name: Optional[str] = None
@@ -124,7 +125,9 @@ class VectorStore:
 
         return self.vectorstore.similarity_search(query, k=k)
 
-    def get_retriever(self, search_kwargs: Optional[dict] = None, **kwargs):
+    def get_retriever(
+        self, search_kwargs: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> Any:  # VectorStoreRetriever 타입 추가
         """
         벡터스토어의 retriever를 반환
 
@@ -152,10 +155,16 @@ def process_pdf_directory(
         pdf_dir (str): PDF 파일들이 있는 디렉토리 경로
         collection_name (str, optional): 저장할 컬렉션 이름
     """
-    # 이미 처리된 PDF 파일 목록을 저장할 파일 경로
+    # 디버깅을 위한 출력 추가
+    pdf_path = Path(pdf_dir).joinpath("pdf")
+    print(f"PDF 디렉토리 경로: {pdf_path.absolute()}")
+    pdf_files = list(pdf_path.glob("*.pdf"))
+    print(f"발견된 PDF 파일들: {[pdf.name for pdf in pdf_files]}")
+
     processed_states_path = (
         Path(vector_store.persist_directory) / "processed_states.json"
     )
+    print(f"처리 상태 파일 경로: {processed_states_path.absolute()}")
 
     # 처리된 상태 로드
     processed_states = {}
@@ -164,7 +173,6 @@ def process_pdf_directory(
             processed_states = json.load(f)
 
     # 새로운 PDF 파일 찾기
-    pdf_files = list(Path(pdf_dir).glob("*.pdf"))
     new_pdf_files = [pdf for pdf in pdf_files if pdf.name not in processed_states]
 
     if not new_pdf_files:
@@ -198,12 +206,13 @@ def process_pdf_directory(
 
 # 파일이 직접 실행될 때만 실행되는 코드
 if __name__ == "__main__":
-    # 벡터스토어 초기화
-    vector_store = VectorStore(persist_directory="./data/vectordb")
+    # 절대 경로 사용
+    current_dir = Path(__file__).parent.parent
+    vector_store = VectorStore(persist_directory=str(current_dir / "data" / "vectordb"))
 
     # PDF 처리
     process_pdf_directory(
         vector_store=vector_store,
-        pdf_dir="./data",
-        collection_name="pdf_collection",  # 선택사항
+        pdf_dir=str(current_dir / "data"),
+        collection_name="pdf_collection",
     )
