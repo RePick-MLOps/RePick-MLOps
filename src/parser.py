@@ -9,7 +9,6 @@ import src.graphparser.core as parser_core
 import src.graphparser.pdf as pdf
 from langgraph.graph import END, StateGraph
 from langgraph.checkpoint.memory import MemorySaver
-from app.chatbot import DocumentChatbot
 from langchain.schema import Document
 
 # 콘솔 인코딩을 utf-8로 설정
