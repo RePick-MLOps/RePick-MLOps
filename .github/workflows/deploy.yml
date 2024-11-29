@@ -1,9 +1,11 @@
-name: Docker Build and Push with Secrets
+name: Docker Build and Push with Tags
 
 on:
   push:
     branches:
-      - "WQKY-168-docker-images-241128"
+      - "WQKY-168-docker-images-241129"
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -13,16 +15,20 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Log in to DockerHub
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build Docker Image
-        run: |
-          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chatbot:v1.3 .
+      - name: Extract version from tag
+        id: vars
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      - name: Push Docker Image
+      - name: Build and Push Docker Image
         run: |
-          docker push jeonghyeran/rp-chatbot:v1.3
+          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chatbot:${{ env.VERSION }} .
+          docker push jeonghyeran/rp-chatbot:${{ env.VERSION }}
