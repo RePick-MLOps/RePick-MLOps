@@ -10,6 +10,9 @@ RUN pip install poetry
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
+COPY requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY agents ./agents
 COPY app ./app
