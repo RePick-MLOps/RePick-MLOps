@@ -5,6 +5,7 @@ from langchain_chroma import Chroma
 from chatbot.models.chatbot import ChatAgent
 import uvicorn
 import logging
+from langchain_community.chat_message_histories import ChatMessageHistory
 
 # logger 설정
 logging.basicConfig(
@@ -18,7 +19,6 @@ app = FastAPI(title="RePick Chatbot API")
 # Pydantic 모델 정의
 class SendMessageRequest(BaseModel):
     input: str
-    session_id: str
 
 
 class ChatResponse(BaseModel):
@@ -50,9 +50,7 @@ chat_agent = initialize_chat_agent()
 async def send_message(request: SendMessageRequest):
     try:
         logger.info(f"Received chat request: {request}")
-        response = chat_agent.invoke_agent(
-            {"input": request.input, "session_id": request.session_id}
-        )
+        response = chat_agent.invoke_agent({"input": request.input})
         logger.info(f"Generated response: {response}")
         return ChatResponse(response=response)
     except Exception as e:

@@ -1,16 +1,20 @@
-FROM python:3.11
-
-ARG OPENAI_API_KEY
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
+FROM python:3.11 AS builder
 
 WORKDIR /app
 
-RUN pip install --upgrade pip
+COPY pyproject.toml poetry.lock ./
 
-COPY requirements.txt ./
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-dev
 
-RUN pip install --no-cache-dir -r requirements.txt
+FROM python:3.11
 
-COPY myapp.py .
+WORKDIR /app
 
-CMD ["uvicorn", "myapp:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY --from=builder /app /app
+COPY app/ .
+
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+
+CMD ["uvicorn", "api.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
