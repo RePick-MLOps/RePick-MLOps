@@ -1,20 +1,25 @@
-FROM python:3.11 AS builder
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install poetry
 
 WORKDIR /app
 
 COPY pyproject.toml poetry.lock ./
 
-RUN pip install poetry && \
-    poetry config virtualenvs.create false && \
-    poetry install --no-dev
+COPY agents ./agents
+COPY app ./app
+COPY chatbot ./chatbot
+COPY data/vectordb ./data/vectordb
+COPY prompts ./prompts
+COPY src ./src
+COPY scripts ./scripts
+COPY tools ./tools
 
-FROM python:3.11
+EXPOSE 8000
 
-WORKDIR /app
-
-COPY --from=builder /app /app
-COPY app/ .
-
-ENV OPENAI_API_KEY=$OPENAI_API_KEY
-
-CMD ["uvicorn", "api.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.api.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
