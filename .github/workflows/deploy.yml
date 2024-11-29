@@ -3,9 +3,7 @@ name: Docker Build and Push with Tags
 on:
   push:
     branches:
-      - "WQKY-168-docker-images-241129"
-    tags:
-      - "v*"
+      - "WQKY-168-docker-images-241129-1"
 
 jobs:
   build:
@@ -27,8 +25,11 @@ jobs:
       - name: Extract version from tag
         id: vars
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      - name: Build and Push Docker Image
+        
+      - name: Build Docker Image
         run: |
-          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chatbot:${{ env.VERSION }} .
-          docker push jeonghyeran/rp-chatbot:${{ env.VERSION }}
+          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chatbot:v1.0 .
+
+      - name: Push Docker Image
+        run: |
+          docker push jeonghyeran/rp-chatbot:v1.0

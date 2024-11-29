@@ -1,6 +1,13 @@
 *.pyc
+**/*.pyc
 __pycache__/
+**/__pycache__/
 *.log
+logs/
 .git
 .gitignore
+*.pyc
+*.pyo
 .env
+*.sqlite3
+*.md
