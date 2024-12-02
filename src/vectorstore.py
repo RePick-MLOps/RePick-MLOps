@@ -73,30 +73,36 @@ class VectorStore:
             documents (List[Document]): 추가할 문서 리스트
             collection_name (str, optional): 컬렉션 이름
         """
-        if collection_name:
-            try:
-                existing_collection = self.client.get_collection(collection_name)
-                vectorstore = Chroma(
-                    client=self.client,
-                    collection_name=collection_name,
-                    embedding_function=self.embedding,
-                )
-                vectorstore.add_documents(documents)
-            except ValueError:
-                self.vectorstore = Chroma.from_documents(
-                    documents=documents,
-                    embedding=self.embedding,
-                    persist_directory=self.persist_directory,
-                    collection_name=collection_name,
-                    client=self.client,
-                )
-        else:
-            self.vectorstore.add_documents(documents)
-
-        # 변경된 부분: client를 통해 직접 persist
         try:
-            self.client.persist()
-            print(f"컬렉션 '{collection_name}' 저장 완료")
+            if collection_name:
+                try:
+                    # 기존 컬렉션이 있는지 확인
+                    existing_collection = self.client.get_collection(collection_name)
+                    vectorstore = Chroma(
+                        client=self.client,
+                        collection_name=collection_name,
+                        embedding_function=self.embedding,
+                    )
+                    vectorstore.add_documents(documents)
+                except ValueError:
+                    # 컬렉션이 없는 경우 새로 생성
+                    self.vectorstore = Chroma.from_documents(
+                        documents=documents,
+                        embedding=self.embedding,
+                        persist_directory=self.persist_directory,
+                        collection_name=collection_name,
+                        client=self.client,
+                    )
+            else:
+                self.vectorstore.add_documents(documents)
+
+            # persist() 메서드 호출 시도는 제거하고 저장 확인으로 대체
+            collection = self.client.get_collection(
+                collection_name if collection_name else "default"
+            )
+            doc_count = collection.count()
+            print(f"컬렉션 '{collection_name}' 저장 완료 (문서 수: {doc_count})")
+
         except Exception as e:
             print(f"저장 중 오류 발생: {str(e)}")
 

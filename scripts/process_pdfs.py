@@ -10,7 +10,7 @@ from pathlib import Path
 from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -36,13 +36,23 @@ def is_original_pdf(filename: str, processed_states: dict) -> bool:
     return filename.endswith(".pdf") and not re.search(split_pattern, filename)
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry_if_exception_type(Exception)
+)
 def process_single_pdf_with_retry(pdf_path):
     """PDF 처리를 재시도 로직과 함께 실행합니다."""
-    state = process_single_pdf(pdf_path)
-    if state is None:
-        raise ValueError(f"PDF 처리 실패: {pdf_path}")
-    return state
+    try:
+        state = process_single_pdf(pdf_path)
+        if state is None:
+            raise ValueError(f"PDF 처리 실패: {pdf_path}")
+        return state
+    except Exception as e:
+        if "rate_limit_exceeded" in str(e):
+            logger.warning("Rate limit 도달. 60초 대기 후 재시도...")
+            time.sleep(60)  # 1분 대기
+        raise
 
 
 def process_new_pdfs():
