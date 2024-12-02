@@ -3,7 +3,7 @@ name: Docker Build and Push with Tags
 on:
   push:
     branches:
-      - "WQKY-168-docker-images-241202"
+      - "WQKY-168-docker-images-241202-1"
 
 jobs:
   build:
