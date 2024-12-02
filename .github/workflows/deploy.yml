@@ -3,7 +3,7 @@ name: Docker Build and Push with Tags
 on:
   push:
     branches:
-      - "WQKY-168-docker-images-241129-2"
+      - "WQKY-22-API-241202"
 
 jobs:
   build:
@@ -28,8 +28,8 @@ jobs:
         
       - name: Build Docker Image
         run: |
-          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chat-bot:v1.1 .
+          docker build --build-arg OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} -t jeonghyeran/rp-chat-bot:v1.0 .
 
       - name: Push Docker Image
         run: |
-          docker push jeonghyeran/rp-chat-bot:v1.1
+          docker push jeonghyeran/rp-chat-bot:v1.0
