@@ -24,6 +24,8 @@ RUN conda env create -f environment.yml && \
 
 ENV PATH /opt/conda/envs/my_env/bin:$PATH
 
+RUN conda install -n my_env uvicorn
+
 COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
