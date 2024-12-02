@@ -12,9 +12,6 @@ venv/
 
 # Data set
 data/*
-!data/pdf/
-!data/vectordb/
-!data/logs/
 data/pdf/*
 data/vectordb/*
 data/logs/*

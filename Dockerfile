@@ -9,10 +9,11 @@ RUN pip install poetry
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
-COPY requirements.txt ./
+RUN poetry config virtualenvs.create false
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml poetry.lock ./
+
+RUN poetry install --no-root --no-dev --no-cache
 
 COPY agents ./agents
 COPY app ./app
@@ -25,4 +26,4 @@ COPY tools ./tools
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.api.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.api.test_chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
