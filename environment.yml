@@ -7,6 +7,7 @@ dependencies:
   - python=3.11
   # 기본 의존성
   - pip
+  - uvicorn
   - pandas>=2.2.2
 
   - pip:
