@@ -1,6 +1,6 @@
-from langchain.tools import Tool
+from langchain_community.tools import Tool
 from langchain.prompts import ChatPromptTemplate
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnableLambda
 import matplotlib.pyplot as plt
@@ -31,7 +31,7 @@ def execute_python_code(code: str) -> str:
         sys.stdout = stdout_backup
         output.close()
 
-def create_python_executor():
+def create_python_executor():  # 이 함수가 외부로 노출되어야 합니다
     """Python 코드 실행 도구 생성"""
     prompt = ChatPromptTemplate.from_messages([
         (
@@ -46,7 +46,7 @@ def create_python_executor():
     chain = prompt | llm | StrOutputParser() | RunnableLambda(execute_python_code)
     
     return Tool(
-        name="python_visualization_tool",
+        name="python_executor_tool",
         description="데이터 시각화나 수치 시각화가 필요할 때 사용하는 도구입니다. matplotlib, pandas 등을 사용한 시각화 코드를 실행할 수 있습니다.",
         func=chain.invoke
-    ) 
+    )

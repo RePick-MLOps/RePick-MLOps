@@ -1,4 +1,4 @@
-def create_prompt_template():
+def prompt_template():
     return """
     이전 대화 내용:
     {chat_history}

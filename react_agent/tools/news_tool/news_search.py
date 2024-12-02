@@ -1,7 +1,7 @@
-from langchain.tools import TavilySearchResults
+from langchain_community.tools import TavilySearchResults
 
 
-def create_news_search():
+def news_search_tool():
     news_search_tool = TavilySearchResults(
         include_domains=["hankyung.com"],
         search_depth="basic",
