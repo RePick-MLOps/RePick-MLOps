@@ -40,6 +40,11 @@ jobs:
           environment-file: environment.yml
           auto-activate-base: false
 
+      # 4. Conda 활성화 추가
+      - name: Activate Conda Environment
+        shell: bash -l {0}
+        run: conda activate repick
+
       # 4. 환경변수 설정
       - name: Set up environment variables
         run: |
@@ -58,13 +63,17 @@ jobs:
       # 6. MongoDB에서 PDF 다운로드
       - name: Download PDFs from MongoDB
         if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        shell: bash -l {0}
         run: |
+          conda activate repick
           python src/utils/mongodb_utils.py
 
       # 7. PDF 처리 파이프라인 실행
       - name: Run PDF processing pipeline
         if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        shell: bash -l {0}
         run: |
+          conda activate repick
           bash scripts/run_pipeline.sh
 
       # 8. ChromaDB 데이터를 S3에 업로드 전에 AWS 자격 증명 설정
