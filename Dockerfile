@@ -1,19 +1,16 @@
-FROM python:3.11-slim
-
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN pip install poetry
+# Miniconda 기반 이미지 사용
+FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
-RUN poetry config virtualenvs.create false
+COPY environment.yml .
 
-COPY pyproject.toml poetry.lock ./
+# Conda 환경 생성 및 의존성 설치
+RUN conda env create -f environment.yml && \
+    conda clean -a && \
+    echo "source activate my_env" > ~/.bashrc
 
-RUN poetry install --no-root --no-dev --no-cache
+ENV PATH /opt/conda/envs/my_env/bin:$PATH
 
 COPY agents ./agents
 COPY app ./app
