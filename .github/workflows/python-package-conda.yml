@@ -1,0 +1,150 @@
+name: RePick Pipeline
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # 매일 자정 실행
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # 수동 실행 옵션
+    inputs:
+      update_type:
+        description: '업데이트 유형 선택'
+        required: true
+        type: choice
+        options:
+          - all
+          - pdf-only
+          - docker-only
+
+jobs:
+  process-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      # 2. Python 설정
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+
+      # 3. Conda 환경 설정
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: repick
+          environment-file: environment.yml
+          auto-activate-base: false
+
+      # 4. 환경변수 설정
+      - name: Set up environment variables
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> $GITHUB_ENV
+          echo "UPSTAGE_API_KEY=${{ secrets.UPSTAGE_API_KEY }}" >> $GITHUB_ENV
+          echo "AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
+
+      # 5. PDF 데이터 디렉토리 생성
+      - name: Create data directories
+        run: |
+          mkdir -p data/pdf
+          mkdir -p data/vectordb
+          mkdir -p data/logs
+
+      # 6. MongoDB에서 PDF 다운로드
+      - name: Download PDFs from MongoDB
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        run: |
+          python src/utils/mongodb_utils.py
+
+      # 7. PDF 처리 파이프라인 실행
+      - name: Run PDF processing pipeline
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        run: |
+          bash scripts/run_pipeline.sh
+
+      # 8. ChromaDB 데이터를 S3에 업로드 전에 AWS 자격 증명 설정
+      - name: Configure AWS credentials for S3
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      # 9. ChromaDB 데이터를 S3에 업로드
+      - name: Upload ChromaDB to S3
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        run: |
+          tar -czf vectordb.tar.gz -C data/vectordb .
+          aws s3 cp vectordb.tar.gz s3://${{ secrets.AWS_S3_BUCKET }}/vectordb/vectordb.tar.gz
+
+      # 10. Docker 이미지 빌드 전에 S3에서 데이터를 가져오는 스크립트 추가
+      - name: Create init script
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        run: |
+          cat << 'EOF' > init.sh
+          #!/bin/bash
+          aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz /tmp/vectordb.tar.gz
+          mkdir -p /app/data/vectordb
+          tar -xzf /tmp/vectordb.tar.gz -C /app/data/vectordb
+          python app/main.py
+          EOF
+          chmod +x init.sh
+
+      # 11. Docker 이미지 빌드
+      - name: Build Docker image
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        run: |
+          docker build -t repick-api:latest .
+
+      # 12. Docker Hub 로그인 및 이미지 푸시
+      - name: Login to Docker Hub
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Push Docker image
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        run: |
+          docker tag repick-api:latest ${{ secrets.DOCKER_USERNAME }}/repick-api:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/repick-api:latest
+
+      # 13. AWS ECR 푸시
+      - name: Configure AWS credentials
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Push to ECR
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: repick-api
+          IMAGE_TAG: latest
+        run: |
+          docker tag repick-api:latest $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # 14. AWS ECS 배포 (선택사항)
+      - name: Deploy to Amazon ECS
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
+        run: |
+          aws ecs update-service \
+            --cluster repick-cluster \
+            --service repick-service \
+            --force-new-deployment \
+            --region ap-northeast-2
