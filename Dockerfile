@@ -26,4 +26,4 @@ COPY tools ./tools
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.api.chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.api.test_chatbot_api:app", "--host", "0.0.0.0", "--port", "8000"]
