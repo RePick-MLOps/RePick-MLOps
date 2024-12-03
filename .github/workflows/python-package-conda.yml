@@ -32,6 +32,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ap-northeast-3
+          role-duration-seconds: 3600
+          mask-aws-account-id: true     
 
       # 3. Python 의존성 설치
       - name: Install dependencies
