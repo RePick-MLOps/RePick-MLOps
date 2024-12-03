@@ -62,9 +62,11 @@ jobs:
         run: python src/utils/mongodb_utils.py
 
       # 7. PDF 처리 파이프라인 실행
-      - name: Run PDF processing pipeline
+      - name: Process PDFs
         if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
-        run: bash scripts/run_pipeline.sh
+        run: |
+          export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+          python scripts/process_pdfs.py
 
       # 8. ChromaDB 데이터를 S3에 업로드
       - name: Configure AWS credentials for S3
@@ -110,8 +112,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/repick-api:${{ env.VERSION }}
-            ${{ secrets.DOCKER_USERNAME }}/repick-api:latest
+            jeonghyeran/rp-chat-bot:v1.1
+            jeonghyeran/rp-chat-bot:latest
             
       - name: Deploy to Amazon ECS
         if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'docker-only' }}
