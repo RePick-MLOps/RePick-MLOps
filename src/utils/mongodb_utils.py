@@ -2,6 +2,7 @@ import os
 import logging
 import requests
 import ssl
+import certifi
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
@@ -12,35 +13,31 @@ logger = logging.getLogger(__name__)
 
 class MongoDBHandler:
     def __init__(self):
-        load_dotenv()
-        self.base_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-        self.mongodb_uri = os.getenv("MONGO_URI")
-
         try:
-            # MongoDB 연결 문자열에 TLS 설정 추가
+            # TLS/SSL 설정 개선
             self.client = MongoClient(
                 os.getenv("MONGO_URI"),
                 tls=True,
-                tlsInsecure=True,  # 개발 환경에서만 사용
-                serverSelectionTimeoutMS=30000,
-                connectTimeoutMS=30000,
+                tlsCAFile=certifi.where(),
+                serverSelectionTimeoutMS=5000,
+                tlsAllowInvalidCertificates=False,
+                connect=True,
                 retryWrites=True,
-                w="majority",
-                directConnection=False,
             )
-
             # 연결 테스트
             self.client.admin.command("ping")
-            logger.info("MongoDB 연결 성공")
-
+            logger.info("MongoDB에 성공적으로 연결되었습니다.")
         except Exception as e:
             logger.error(f"MongoDB 연결 실패: {str(e)}")
             raise
 
         self.db = self.client.get_database("research_db")
         self.collection = self.db["reports"]
+
+        # base_dir 추가
+        self.base_dir = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
 
         # 문서 수 확인
         doc_count = self.collection.count_documents({})
