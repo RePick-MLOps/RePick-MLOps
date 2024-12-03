@@ -19,13 +19,15 @@ class MongoDBHandler:
         self.mongodb_uri = os.getenv("MONGO_URI")
 
         try:
-            # SSL/TLS 설정 수정
+            # MongoDB 연결 문자열에 TLS 설정 추가
             self.client = MongoClient(
-                self.mongodb_uri,
+                os.getenv("MONGO_URI"),
                 tls=True,
-                tlsAllowInvalidCertificates=True,  # 개발 환경에서만 사용하세요
+                tlsAllowInvalidCertificates=True,  # 개발 환경에서만 사용
                 serverSelectionTimeoutMS=20000,
                 connectTimeoutMS=20000,
+                retryWrites=True,
+                w="majority",
             )
 
             # 연결 테스트
