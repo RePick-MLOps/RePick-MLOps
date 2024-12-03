@@ -1,8 +1,10 @@
 import os
 import logging
 import requests
+import ssl
 from pymongo import MongoClient
 from dotenv import load_dotenv
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -16,27 +18,30 @@ class MongoDBHandler:
         )
         self.mongodb_uri = os.getenv("MONGO_URI")
 
-        # TLS/SSL 옵션 수정
-        client_options = {
-            "tls": True,
-            "tlsAllowInvalidCertificates": True,
-            "retryWrites": True,
-        }
-
         try:
-            self.client = MongoClient(self.mongodb_uri, **client_options)
+            # SSL/TLS 설정 수정
+            self.client = MongoClient(
+                self.mongodb_uri,
+                tls=True,
+                tlsAllowInvalidCertificates=True,  # 개발 환경에서만 사용하세요
+                serverSelectionTimeoutMS=20000,
+                connectTimeoutMS=20000,
+            )
+
             # 연결 테스트
             self.client.admin.command("ping")
-            self.db = self.client.get_database("research_db")
-            self.collection = self.db["reports"]
-
-            # 문서 수 확인
-            doc_count = self.collection.count_documents({})
-            logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
+            logger.info("MongoDB 연결 성공")
 
         except Exception as e:
             logger.error(f"MongoDB 연결 실패: {str(e)}")
             raise
+
+        self.db = self.client.get_database("research_db")
+        self.collection = self.db["reports"]
+
+        # 문서 수 확인
+        doc_count = self.collection.count_documents({})
+        logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
 
     def download_pdf(self, output_dir: str = "data/pdf", limit: int = 10) -> bool:
         output_dir = os.path.join(self.base_dir, output_dir)
