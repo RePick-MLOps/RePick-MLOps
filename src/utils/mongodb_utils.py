@@ -3,6 +3,7 @@ import logging
 import requests
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import ssl
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,8 +25,12 @@ class MongoDBHandler:
         }
 
         try:
-            self.client = MongoClient(self.mongodb_uri, **client_options)
-            # 연결 테스트
+            self.client = MongoClient(
+                self.mongodb_uri,
+                ssl=True,
+                ssl_cert_reqs=ssl.CERT_NONE,  # 개발 환경에서만 사용
+                serverSelectionTimeoutMS=5000,
+            )
             self.client.admin.command("ping")
             self.db = self.client.get_database("research_db")
             self.collection = self.db["reports"]
