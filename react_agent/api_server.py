@@ -1,14 +1,18 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from react_agent.models.executor.executor import agent_executor
+from models.executor import agent_executor
+from chat_history import ChatHistoryManager  # ChatHistoryManager import
 import uvicorn
 
 app = FastAPI(title="RePick Chat API")
 
+# ChatHistoryManager 인스턴스 생성
+history_manager = ChatHistoryManager()
+
 
 class ChatRequest(BaseModel):
     message: str
-    chat_history: list = []  # 선택적 채팅 기록
+    chat_history: list = []
 
 
 class ChatResponse(BaseModel):
@@ -18,11 +22,14 @@ class ChatResponse(BaseModel):
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
-        # 벡터 DB 경로 설정
+        # db_path 설정
         db_path = r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb"
 
-        # 에이전트 실행
-        response = agent_executor(db_path=db_path).invoke(
+        # 에이전트 실행 및 채팅 기록 추가
+        agent = agent_executor(db_path=db_path)
+        agent_with_history = history_manager.create_agent_with_history(agent)
+
+        response = agent_with_history.invoke(
             {"input": request.message, "chat_history": request.chat_history}
         )
 
@@ -37,4 +44,4 @@ async def health_check():
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.api.chat_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

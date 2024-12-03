@@ -1,33 +1,22 @@
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from langchain.chat_models import ChatOpenAI
-from react_agent.tools.tools import tool_list
-from react_agent.prompts.template import prompt_template
+from executor import agent_executor
 
-def create_llm():
-    """스트리밍 지원 GPT-4 언어 모델 생성"""
-    return ChatOpenAI(
-        model_name='gpt-4',
-        streaming=True,
-        temperature=0,
-        callbacks=[StreamingStdOutCallbackHandler()]
+
+def test_chat():
+    """
+    에이전트와의 대화를 테스트하는 함수
+    """
+    # db_path 추가
+    db_path = r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb"
+
+    response = agent_executor(db_path=db_path).invoke(
+        {
+            "input": "롯데쇼핑의 ESG 점수를 전체 평균과 비교한 그래프가 어떻게 되어 있나요?",
+            "chat_history": [],
+        }
     )
 
-def create_agent(llm=None, tools=tool_list, prompt=prompt_template) -> AgentExecutor:
-    """한국어 ReAct 에이전트 생성"""
-    if llm is None:
-        llm = create_llm()
-        
-    agent = create_react_agent(llm, tools, prompt)
-    react_agent_executor = AgentExecutor(
-        agent=agent,
-        tools=tools,
-        verbose=True,
-        handle_parsing_errors=True
-    )
-    return react_agent_executor
+    print("\n최종 응답:", response)
 
-agent = create_agent()
 
-# 에이전트와 대화
-response = agent.invoke("중국 시장에 대해서 분석해줘")
+if __name__ == "__main__":
+    test_chat()

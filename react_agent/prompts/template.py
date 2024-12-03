@@ -1,5 +1,8 @@
+from langchain_core.prompts import PromptTemplate
+
+
 def prompt_template():
-    return """
+    template = """
     이전 대화 내용:
     {chat_history}
     
@@ -24,6 +27,7 @@ def prompt_template():
     - 검색 결과를 요약하고, 출처를 명시하며, 구조화된 답변을 작성합니다.
     - 시각화 결과가 있다면 이를 포함하여 설명합니다.
 
+    Question: {input}
     Question: 당신이 답해야 할 입력 질문
     Thought: 무엇을 해야 할지 생각하세요
     Action: 취해야 할 행동을 선택하세요. [{tool_names}] 중 하나여야 합니다.
@@ -31,7 +35,18 @@ def prompt_template():
     Observation: 행동의 결과를 작성하세요
     Thought: 필요한 데이터를 충분히 수집했거나, 더 이상 유효한 결과를 찾을 수 없음을 판단합니다.
     Final Answer: 원래 질문에 대한 최종 답변을 작성하세요.
-
-    Question: {input}
     {agent_scratchpad}
     """
+
+    prompt = PromptTemplate(
+        template=template,
+        input_variables=[
+            "chat_history",
+            "input",
+            "tools",  # 도구의 전체 설명이 포함된 문자열
+            "tool_names",  # 도구들의 이름만 리스트로 포함
+            "agent_scratchpad",  # 에이전트의 사고 과정을 기록하는 공간
+        ],
+    )
+
+    return prompt
