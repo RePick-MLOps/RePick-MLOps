@@ -68,22 +68,19 @@ jobs:
           
       # 6. MongoDB에서 PDF 다운로드
       - name: Download PDFs from MongoDB
-        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' || github.event_name == 'push' }}
         run: |
-          echo "Starting MongoDB PDF download..."
+          echo "Event Type: ${{ github.event_name }}"
+          echo "Update Type: ${{ github.event.inputs.update_type }}"
           python src/utils/mongodb_utils.py
-          echo "PDF directory contents after download:"
-          ls -la data/pdf/
 
       # 7. PDF 처리 파이프라인 실행
       - name: Process PDFs
-        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' }}
+        if: ${{ github.event.inputs.update_type == 'all' || github.event.inputs.update_type == 'pdf-only' || github.event_name == 'push' }}
         run: |
           echo "Starting PDF processing..."
           export PYTHONPATH="${PYTHONPATH}:$(pwd)"
           python scripts/process_pdfs.py
-          echo "VectorDB directory contents after processing:"
-          ls -la data/vectordb/
 
       # 8. ChromaDB 데이터를 S3에 업로드
       - name: Configure AWS credentials for S3
