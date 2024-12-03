@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 class MongoDBHandler:
     def __init__(self):
         try:
-            # TLS/SSL 설정 단순화
+            # TLS/SSL 설정 업데이트
             self.client = MongoClient(
                 os.getenv("MONGO_URI"),
                 tlsCAFile=certifi.where(),
-                serverSelectionTimeoutMS=5000,
+                serverSelectionTimeoutMS=20000,
+                tls=True,
+                tlsAllowInvalidCertificates=False,
             )
             # 연결 테스트
             self.client.admin.command("ping")
