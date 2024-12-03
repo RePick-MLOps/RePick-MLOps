@@ -19,7 +19,7 @@ def load_vectorstore(vectordb_path):
     try:
         embeddings = load_embedding_model()
         vectorstore = Chroma(
-            persist_directory="s3://repick-chromadb/vectordb",
+            persist_directory="/Users/naeun/working/RePick-MLOps/data/vectordb",
             embedding_function=embeddings,
             collection_name="pdf_collection",
         )
