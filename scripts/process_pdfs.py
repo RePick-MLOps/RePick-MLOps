@@ -10,7 +10,12 @@ from pathlib import Path
 from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -39,7 +44,7 @@ def is_original_pdf(filename: str, processed_states: dict) -> bool:
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry_if_exception_type(Exception)
+    retry=retry_if_exception_type(Exception),
 )
 def process_single_pdf_with_retry(pdf_path):
     """PDF 처리를 재시도 로직과 함께 실행합니다."""

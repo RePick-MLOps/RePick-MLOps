@@ -15,13 +15,28 @@ class MongoDBHandler:
             os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         )
         self.mongodb_uri = os.getenv("MONGO_URI")
-        self.client = MongoClient(self.mongodb_uri)
-        self.db = self.client["research_db"]
-        self.collection = self.db["reports"]
 
-        # 문서 수 확인
-        doc_count = self.collection.count_documents({})
-        logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
+        # TLS/SSL 옵션 수정
+        client_options = {
+            "tls": True,
+            "tlsAllowInvalidCertificates": True,
+            "retryWrites": True,
+        }
+
+        try:
+            self.client = MongoClient(self.mongodb_uri, **client_options)
+            # 연결 테스트
+            self.client.admin.command("ping")
+            self.db = self.client.get_database("research_db")
+            self.collection = self.db["reports"]
+
+            # 문서 수 확인
+            doc_count = self.collection.count_documents({})
+            logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
+
+        except Exception as e:
+            logger.error(f"MongoDB 연결 실패: {str(e)}")
+            raise
 
     def download_pdf(self, output_dir: str = "data/pdf", limit: int = 10) -> bool:
         output_dir = os.path.join(self.base_dir, output_dir)

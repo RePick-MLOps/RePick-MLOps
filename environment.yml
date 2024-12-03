@@ -44,4 +44,5 @@ dependencies:
       - pillow>=10.3.0
 
       # MongoDB 관련
-      - pymongo
+      - pymongo[srv]
+      - certifi
