@@ -23,11 +23,12 @@ class MongoDBHandler:
             self.client = MongoClient(
                 os.getenv("MONGO_URI"),
                 tls=True,
-                tlsAllowInvalidCertificates=True,  # 개발 환경에서만 사용
-                serverSelectionTimeoutMS=20000,
-                connectTimeoutMS=20000,
+                tlsInsecure=True,  # 개발 환경에서만 사용
+                serverSelectionTimeoutMS=30000,
+                connectTimeoutMS=30000,
                 retryWrites=True,
                 w="majority",
+                directConnection=False,
             )
 
             # 연결 테스트
@@ -117,4 +118,4 @@ class MongoDBHandler:
 
 if __name__ == "__main__":
     with MongoDBHandler() as handler:
-        handler.download_pdf(limit=5)  # 5개의 문서만 처리
+        handler.download_pdf(limit=1)  # 5개의 문서만 처리
