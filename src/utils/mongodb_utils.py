@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+load_dotenv()
+
 
 class MongoDBHandler:
     def __init__(self):
@@ -19,8 +21,8 @@ class MongoDBHandler:
                 os.getenv("MONGO_URI"),
                 tlsCAFile=certifi.where(),
                 serverSelectionTimeoutMS=20000,
-                tls=True,
-                tlsAllowInvalidCertificates=False,
+                retryWrites=True,
+                w="majority",
             )
             # 연결 테스트
             self.client.admin.command("ping")
