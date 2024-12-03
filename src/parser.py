@@ -21,8 +21,6 @@ load_dotenv(verbose=True)
 # 환경 변수 확인을 위한 디버그 출력 추가
 print("UPSTAGE_API_KEY:", os.environ.get("UPSTAGE_API_KEY"))
 print("환경 변수 로드 위치:", os.getcwd())
-print("OPENAI_API_KEY:", os.environ.get("OPENAI_API_KEY"))
-print("환경 변수 로드 위치:", os.getcwd())
 
 # 문서 분할
 split_pdf_node = pdf.SplitPDFFilesNode(batch_size=10)

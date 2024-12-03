@@ -30,6 +30,7 @@ dependencies:
       # API & 웹
       - fastapi
       - uvicorn
+      - requests>=2.31.0
 
       # AI & ML 도구
       - huggingface-hub>=0.23
@@ -43,4 +44,5 @@ dependencies:
       - pillow>=10.3.0
 
       # MongoDB 관련
-      - pymongo
+      - pymongo[srv]
+      - certifi
