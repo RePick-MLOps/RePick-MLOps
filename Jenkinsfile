@@ -144,16 +144,20 @@ pipeline {
                         echo "전체 S3 URI: s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz"
                         
                         echo "Starting ChromaDB upload to S3..."
+                        echo "=== vectordb 디렉토리 내용 ==="
                         ls -la data/vectordb/
-                        tar -czf vectordb.tar.gz -C data/vectordb .
-                        echo "Created tar file:"
+                        
+                        echo "=== tar 파일 생성 시작 ==="
+                        cd data
+                        tar -czvf ../vectordb.tar.gz vectordb/
+                        cd ..
+                        
+                        echo "=== 생성된 tar 파일 확인 ==="
                         ls -lh vectordb.tar.gz
                         
-                        # AWS S3 명령어 실행 전 환경 변수 확인
-                        aws s3 ls s3://${AWS_S3_BUCKET}/
-                        
-                        # 실제 업로드 시도
+                        echo "=== AWS S3 업로드 시작 ==="
                         aws s3 cp vectordb.tar.gz s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz --debug
+                        
                         echo "Upload completed"
                     '''
                 }
