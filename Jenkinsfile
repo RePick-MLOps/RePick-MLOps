@@ -131,7 +131,12 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
                 ]) {
                     sh '''
                         echo "=== S3 업로드 디버깅 ==="
