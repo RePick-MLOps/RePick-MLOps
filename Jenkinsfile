@@ -32,14 +32,12 @@ pipeline {
         
         stage('Configure AWS') {
             steps {
-                withCredentials([
-                    [
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-credentials',
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                    ]
-                ]) {
+                withCredentials([[
+                    credentialsId: 'aws-credentials',
+                    accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                    secretKeyVariable: 'AWS_SECRET_ACCESS_KEY',
+                    $class: 'AWSCredentialsBinding'
+                ]]) {
                     sh """
                         aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
                         aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
