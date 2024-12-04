@@ -71,6 +71,11 @@ pipeline {
                     string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
                 ]) {
                     sh '''
+                        echo "Checking MongoDB environment variables:"
+                        echo "EC2_HOST: $EC2_HOST"
+                        echo "EC2_PORT: $EC2_PORT"
+                        echo "DB_USER: $DB_USER"
+                        
                         mkdir -p data/pdf
                         mkdir -p data/vectordb
                         mkdir -p data/logs
