@@ -168,17 +168,13 @@ pipeline {
                 '''
             }
         }
-        
-        stage('Example') {
-            steps {
-                sh('echo ${STATEMENT}')
-            }
-        }
     }
     
     post {
         always {
-            cleanWs()
+            node {
+                cleanWs()
+            }
         }
     }
 } 
