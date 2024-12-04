@@ -29,7 +29,7 @@ pipeline {
             steps {
                 script {
                     // Python 버전 확인
-                    sh 'python3 --version'
+                    sh '/usr/bin/python3 --version'
                 }
             }
         }
