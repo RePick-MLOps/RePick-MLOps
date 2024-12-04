@@ -5,6 +5,7 @@ pipeline {
         PYTHON_VERSION = '3.11'
         AWS_REGION = 'ap-northeast-3'
         DOCKER_IMAGE = 'jeonghyeran/rp-chat-bot'
+        EXAMPLE_CREDS = credentials('example-credentials-id')
     }
     
     parameters {
@@ -13,6 +14,7 @@ pipeline {
             choices: ['all', 'pdf-only', 'docker-only'],
             description: '업데이트 유형을 선택하세요'
         )
+        string(name: 'STATEMENT', defaultValue: 'hello; ls /', description: 'What should I say?')
     }
     
     stages {
@@ -164,6 +166,12 @@ pipeline {
                         --service repick-service \
                         --force-new-deployment
                 '''
+            }
+        }
+        
+        stage('Example') {
+            steps {
+                sh('echo ${STATEMENT}')
             }
         }
     }
