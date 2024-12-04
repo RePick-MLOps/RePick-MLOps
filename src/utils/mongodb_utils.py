@@ -1,8 +1,6 @@
 import os
 import logging
 import requests
-import ssl
-import certifi
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
@@ -16,32 +14,45 @@ load_dotenv()
 class MongoDBHandler:
     def __init__(self):
         try:
-            # TLS/SSL 설정 업데이트
+            # EC2 MongoDB 연결 정보
+            EC2_HOST = os.getenv("EC2_HOST")
+            EC2_PORT = int(os.getenv("EC2_PORT", "27017"))
+            DB_USER = os.getenv("DB_USER")
+            DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+            # MongoDB 연결 URI 구성
+            uri = f"mongodb://{DB_USER}:{DB_PASSWORD}@{EC2_HOST}:{EC2_PORT}/"
+
+            # MongoDB 클라이언트 설정
             self.client = MongoClient(
-                os.getenv("MONGO_URI"),
-                tlsCAFile=certifi.where(),
-                serverSelectionTimeoutMS=20000,
+                uri,
+                serverSelectionTimeoutMS=30000,  # 30초
+                connectTimeoutMS=30000,
+                socketTimeoutMS=30000,
                 retryWrites=True,
-                w="majority",
+                retryReads=True,
+                maxPoolSize=1,
             )
+
             # 연결 테스트
             self.client.admin.command("ping")
             logger.info("MongoDB에 성공적으로 연결되었습니다.")
+
+            self.db = self.client["research_db"]
+            self.collection = self.db["reports"]
+
+            # base_dir 설정
+            self.base_dir = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+
+            # 문서 수 확인
+            doc_count = self.collection.count_documents({})
+            logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
+
         except Exception as e:
             logger.error(f"MongoDB 연결 실패: {str(e)}")
             raise
-
-        self.db = self.client.get_database("research_db")
-        self.collection = self.db["reports"]
-
-        # base_dir 추가
-        self.base_dir = os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        )
-
-        # 문서 수 확인
-        doc_count = self.collection.count_documents({})
-        logger.info(f"reports 컬렉션의 전체 문서 수: {doc_count}")
 
     def download_pdf(self, output_dir: str = "data/pdf", limit: int = 10) -> bool:
         output_dir = os.path.join(self.base_dir, output_dir)

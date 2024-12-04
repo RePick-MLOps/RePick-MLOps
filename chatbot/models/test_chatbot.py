@@ -128,20 +128,20 @@ def create_chain(retriever):
     return chain
 
 
-def initialize_retrievers(all_docs):
-    # BM25 리트리버 초기화
-    bm25_retriever = BM25Retriever.from_documents(all_docs)
-    bm25_retriever.k = 5
+def initialize_retrievers(vectorstore):
+    # Chroma 리트리버 초기화
+    chroma_retriever = vectorstore.as_retriever(
+        search_type="similarity", search_kwargs={"k": 5}
+    )
 
-    # FAISS 리트리버 초기화
-    embedding = OpenAIEmbeddings()
-    faiss_vectorstore = FAISS.from_documents(all_docs, embedding)
-    faiss_retriever = faiss_vectorstore.as_retriever(search_kwargs={"k": 5})
+    # BM25 리트리버 초기화 (Chroma에서 문서 가져오기)
+    documents = vectorstore.get()  # Chroma에서 모든 문서 가져오기
+    bm25_retriever = BM25Retriever.from_documents(documents)
+    bm25_retriever.k = 5
 
     # 앙상블 리트리버 초기화
     ensemble_retriever = EnsembleRetriever(
-        retrievers=[bm25_retriever, faiss_retriever],
-        weights=[0.7, 0.3],
+        retrievers=[chroma_retriever, bm25_retriever], weights=[0.7, 0.3]
     )
 
     return ensemble_retriever
