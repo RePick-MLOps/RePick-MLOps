@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    tools {
-        jenkins.plugins.shiningpanda.tools.PythonInstallation 'Python3'
-    }
     
     environment {
         PYTHON_VERSION = '3.11'
@@ -28,7 +25,6 @@ pipeline {
         stage('Setup Python') {
             steps {
                 script {
-                    // Python 버전 확인
                     sh '/usr/bin/python3 --version'
                 }
             }
