@@ -168,12 +168,6 @@ pipeline {
                 '''
             }
         }
-        
-        stage('Example') {
-            steps {
-                sh('echo ${STATEMENT}')
-            }
-        }
     }
     
     post {
