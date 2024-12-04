@@ -130,15 +130,28 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    echo "Starting ChromaDB upload to S3..."
-                    ls -la data/vectordb/
-                    tar -czf vectordb.tar.gz -C data/vectordb .
-                    echo "Created tar file:"
-                    ls -lh vectordb.tar.gz
-                    aws s3 cp vectordb.tar.gz s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz --debug
-                    echo "Upload completed"
-                '''
+                withCredentials([
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
+                ]) {
+                    sh '''
+                        echo "=== S3 업로드 디버깅 ==="
+                        echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
+                        echo "전체 S3 URI: s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz"
+                        
+                        echo "Starting ChromaDB upload to S3..."
+                        ls -la data/vectordb/
+                        tar -czf vectordb.tar.gz -C data/vectordb .
+                        echo "Created tar file:"
+                        ls -lh vectordb.tar.gz
+                        
+                        # AWS S3 명령어 실행 전 환경 변수 확인
+                        aws s3 ls s3://${AWS_S3_BUCKET}/
+                        
+                        # 실제 업로드 시도
+                        aws s3 cp vectordb.tar.gz s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz --debug
+                        echo "Upload completed"
+                    '''
+                }
             }
         }
         
