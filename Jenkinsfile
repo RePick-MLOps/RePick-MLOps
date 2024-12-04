@@ -13,7 +13,6 @@ pipeline {
             choices: ['all', 'pdf-only', 'docker-only'],
             description: '업데이트 유형을 선택하세요'
         )
-        string(name: 'STATEMENT', defaultValue: 'hello; ls /', description: 'What should I say?')
     }
     
     stages {
