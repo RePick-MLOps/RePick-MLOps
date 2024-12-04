@@ -52,6 +52,7 @@ pipeline {
             steps {
                 sh '''
                     /usr/bin/python3 -m pip install --upgrade pip
+                    /usr/bin/python3 -m pip install pyOpenSSL==23.2.0
                     /usr/bin/python3 -m pip install -r requirements.txt
                 '''
             }
@@ -63,7 +64,11 @@ pipeline {
                     string(credentialsId: 'openai-api-key', variable: 'OPENAI_API_KEY'),
                     string(credentialsId: 'mongo-uri', variable: 'MONGO_URI'),
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY'),
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
                 ]) {
                     sh '''
                         mkdir -p data/pdf
