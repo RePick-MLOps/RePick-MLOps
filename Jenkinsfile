@@ -172,7 +172,9 @@ pipeline {
     
     post {
         always {
-            cleanWs()
+            script {
+                deleteDir()
+            }
         }
     }
 } 
