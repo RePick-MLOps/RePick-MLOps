@@ -5,7 +5,6 @@ pipeline {
         PYTHON_VERSION = '3.11'
         AWS_REGION = 'ap-northeast-3'
         DOCKER_IMAGE = 'jeonghyeran/rp-chat-bot'
-        EXAMPLE_CREDS = credentials('example-credentials-id')
     }
     
     parameters {
