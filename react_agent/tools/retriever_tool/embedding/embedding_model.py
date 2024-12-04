@@ -1,19 +1,18 @@
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
+
 
 # 싱글톤 패턴 : 클래스의 인스턴스가 하나만 생성되도록 보장하는 디자인 패턴
 class EmbeddingModelSingleton:
     _instance = None
-    
+
     @classmethod
     def get_instance(cls):
         if cls._instance is None:
             model_name = "jhgan/ko-sbert-sts"
-            cls._instance = HuggingFaceEmbeddings(
-                model_name=model_name,
-                encode_kwargs={'normalize_embeddings': True}
-            )
+            cls._instance = HuggingFaceEmbeddings(model_name=model_name)
         return cls._instance
-    
+
+
 # @classmethod
 # 클래스 메서드 데코레이터로, 인스턴스가 아닌 클래스 자체에서 호출할 수 있는 메서드를 정의합니다.
 # 첫 번째 매개변수로 cls를 받아 클래스 자체를 참조합니다.

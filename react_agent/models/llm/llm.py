@@ -7,7 +7,7 @@ def llm_model():
     Chat_GPT 언어 모델 인스턴스를 생성하는 함수
     """
     return ChatOpenAI(
-        model_name="gpt-4",
+        model_name="gpt-4o",
         streaming=True,  # 스트리밍 응답 활성화
         temperature=0,  # 분석이 중요하기 때문에 낮은 랜덤성 부여
         callbacks=[

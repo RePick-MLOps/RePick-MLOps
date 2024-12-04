@@ -11,6 +11,7 @@ sys.path.append(
 from react_agent.models.llm import llm_model
 from react_agent.prompts import prompt_template
 from react_agent.tools import tool_list
+from langchain.agents import create_react_agent
 
 
 def react_agent(db_path: str):
@@ -21,4 +22,5 @@ def react_agent(db_path: str):
     tools = tool_list(db_path)
     prompt = prompt_template()
 
-    return react_agent(llm=llm, tools=tools, prompt=prompt)
+    # create_react_agent 함수를 사용하여 에이전트 생성
+    return create_react_agent(llm=llm, tools=tools, prompt=prompt)
