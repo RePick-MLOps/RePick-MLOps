@@ -84,7 +84,7 @@ pipeline {
             steps {
                 sh '''
                     export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-                    python src/utils/mongodb_utils.py
+                    /usr/bin/python3 src/utils/mongodb_utils.py
                 '''
             }
         }
@@ -98,7 +98,7 @@ pipeline {
             steps {
                 sh '''
                     export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-                    python scripts/process_pdfs.py
+                    /usr/bin/python3 scripts/process_pdfs.py
                 '''
             }
         }
