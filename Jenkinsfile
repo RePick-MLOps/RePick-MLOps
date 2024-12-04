@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tools {
+        python 'Python3'
+    }
     
     environment {
         PYTHON_VERSION = '3.11'
@@ -25,8 +28,8 @@ pipeline {
         stage('Setup Python') {
             steps {
                 script {
-                    def pythonTool = tool name: 'Python3', type: 'hudson.plugins.python.PythonInstallation'
-                    env.PATH = "${pythonTool}/bin:${env.PATH}"
+                    // Python 버전 확인
+                    sh 'python3 --version'
                 }
             }
         }
