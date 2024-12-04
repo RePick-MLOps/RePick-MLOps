@@ -20,13 +20,26 @@ class MongoDBHandler:
             DB_USER = os.getenv("DB_USER")
             DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+            # 디버그를 위한 로깅 추가
+            logger.info("=== MongoDB 연결 정보 ===")
+            logger.info(f"EC2_HOST: {EC2_HOST}")
+            logger.info(f"EC2_PORT: {EC2_PORT}")
+            logger.info(f"DB_USER: {DB_USER}")
+            logger.info(
+                f"DB_PASSWORD: {'*' * len(str(DB_PASSWORD)) if DB_PASSWORD else None}"
+            )
+
+            if not all([EC2_HOST, EC2_PORT, DB_USER, DB_PASSWORD]):
+                raise ValueError("필수 환경 변수가 설정되지 않았습니다.")
+
             # MongoDB 연결 URI 구성
             uri = f"mongodb://{DB_USER}:{DB_PASSWORD}@{EC2_HOST}:{EC2_PORT}/"
+            logger.info(f"MongoDB URI: mongodb://{DB_USER}:****@{EC2_HOST}:{EC2_PORT}/")
 
             # MongoDB 클라이언트 설정
             self.client = MongoClient(
                 uri,
-                serverSelectionTimeoutMS=30000,  # 30초
+                serverSelectionTimeoutMS=30000,
                 connectTimeoutMS=30000,
                 socketTimeoutMS=30000,
                 retryWrites=True,

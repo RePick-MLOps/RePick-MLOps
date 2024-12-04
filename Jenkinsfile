@@ -91,10 +91,21 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-                    /usr/bin/python3 src/utils/mongodb_utils.py
-                '''
+                withCredentials([
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+                        echo "Running with environment:"
+                        echo "EC2_HOST=$EC2_HOST"
+                        echo "EC2_PORT=$EC2_PORT"
+                        echo "DB_USER=$DB_USER"
+                        /usr/bin/python3 src/utils/mongodb_utils.py
+                    '''
+                }
             }
         }
         
