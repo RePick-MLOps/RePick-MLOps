@@ -66,11 +66,17 @@ def process_new_pdfs():
     processed_states_path = Path("./data/vectordb/processed_states.json")
     processed_states = load_processed_states()
 
+    # 디버깅: 기존 상태 출력
+    print("\n=== 기존 처리 상태 ===")
+    print(f"처리된 파일 수: {len(processed_states)}")
+    print(f"처리된 파일 목록: {list(processed_states.keys())}")
+
     # 새로운 원본 PDF 파일만 필터링
     pdf_files = [
         f for f in os.listdir(pdf_directory) if is_original_pdf(f, processed_states)
     ]
 
+    logger.info(f"\n=== 새로운 PDF 파일 정보 ===")
     logger.info(f"처리할 새로운 PDF 파일: {len(pdf_files)}개")
     logger.info(f"PDF 파일 목록: {pdf_files}")
 
@@ -78,14 +84,6 @@ def process_new_pdfs():
         # VectorStore 초기화
         vector_store = VectorStore(persist_directory="./data/vectordb")
 
-        # PDF 파일들을 벡터 DB에 저장
-        process_pdf_directory(
-            vector_store=vector_store,
-            pdf_dir="./data",  # vectorstore.py에서 /pdf를 자동으로 추가함
-            collection_name="pdf_collection",
-        )
-
-        # 각 파일 파싱 및 요약
         for pdf_file in pdf_files:
             try:
                 pdf_path = os.path.join(pdf_directory, pdf_file)
@@ -94,6 +92,13 @@ def process_new_pdfs():
                 if state is None:
                     logger.error(f"PDF 처리 실패: {pdf_file}")
                     continue
+
+                # 디버깅: 상태 병합 전 출력
+                logger.info(f"\n=== 상태 병합 전 ({pdf_file}) ===")
+                if pdf_file in processed_states:
+                    logger.info(f"기존 상태: {processed_states[pdf_file]}")
+                else:
+                    logger.info("기존 상태 없음")
 
                 # 상태 정보 업데이트
                 state_dict = {
@@ -106,11 +111,16 @@ def process_new_pdfs():
                     "vectorstore_processed": True,
                 }
 
+                # 디버깅: 새로운 상태 출력
+                logger.info(f"새로운 상태: {state_dict}")
+
                 # 기존 상태 정보와 병합
                 if pdf_file in processed_states:
                     processed_states[pdf_file].update(state_dict)
+                    logger.info(f"상태 병합 완료: {processed_states[pdf_file]}")
                 else:
                     processed_states[pdf_file] = state_dict
+                    logger.info("새로운 상태 추가됨")
 
                 logger.info(f"\n=== 처리 완료: {pdf_file} ===")
                 logger.info(f"텍스트 요약 수: {len(state_dict['text_summary'])}")
@@ -122,19 +132,11 @@ def process_new_pdfs():
                 # 상태 저장
                 with open(processed_states_path, "w", encoding="utf-8") as f:
                     json.dump(processed_states, f, ensure_ascii=False, indent=2)
+                logger.info("상태 파일 저장 완료")
 
             except Exception as e:
                 logger.error(f"처리 실패 ({pdf_file}): {str(e)}")
                 continue
-
-        # 최종 상태 확인
-        try:
-            collection = vector_store.client.get_collection("pdf_collection")
-            logger.info(f"\n=== 최종 처리 결과 ===")
-            logger.info(f"최종 벡터 DB 문서 수: {collection.count()}")
-            logger.info(f"처리된 PDF 파일 수: {len(pdf_files)}")
-        except Exception as e:
-            logger.error(f"최종 상태 확인 중 오류: {str(e)}")
 
 
 if __name__ == "__main__":
