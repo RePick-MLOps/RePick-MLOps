@@ -10,8 +10,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     tar \
-    python3-dev \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').zip" -o "awscliv2.zip" \
+    python3-dev
+
+# AWS CLI 설치를 별도의 레이어로 분리
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').zip" -o "awscliv2.zip" \
     && unzip -q awscliv2.zip \
     && ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update \
     && rm -rf aws awscliv2.zip \
@@ -19,18 +21,12 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rm -rf /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/examples/* \
-    && rm -rf /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/topics/* \
-    && find /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/data/ -name "*.json" ! -name "endpoints.json" -delete
-
-COPY requirements.txt .
-
 # pip로 의존성 설치
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir wheel setuptools && \
-    pip install --no-cache-dir chromadb==0.4.22 && \
-    pip install --no-cache-dir -r requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir chromadb==0.4.22 \
+    && pip install --no-cache-dir -r requirements.txt
 
+# 필요한 파일들 복사
 COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
