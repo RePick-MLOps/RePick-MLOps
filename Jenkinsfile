@@ -20,14 +20,43 @@ pipeline {
             steps {
                 sh '''
                     # 시스템 캐시 정리
-                    sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'
+                    sync
                     
                     # Jenkins 작업 디렉토리 정리
                     rm -rf ${WORKSPACE}/*
                     
+                    # Docker 관련 모든 리소스 정리
+                    docker system df
+                    docker container stop $(docker container ls -aq) || true
+                    docker container rm $(docker container ls -aq) || true
+                    docker volume rm $(docker volume ls -q) || true
+                    
+                    # Docker 빌드 캐시 완전 정리
+                    docker builder prune -f --all
+                    docker system prune -af --volumes
+                    
+                    # buildx 관련 모든 리소스 정리
+                    echo "=== Removing all buildx builders ==="
+                    docker buildx ls
+                    docker buildx rm -f $(docker buildx ls | grep -v default | awk '{print $1}') || true
+                    docker buildx prune -f --all
+                    
+                    # buildx 상태 파일 직접 정리
+                    rm -rf /var/lib/buildkit/runc-overlayfs/snapshots/* || true
+                    rm -rf /var/lib/docker/buildx/* || true
+                    
+                    # 새로운 buildx 빌더 생성
+                    echo "=== Creating new buildx builder ==="
+                    docker buildx create --use --name fresh-builder
+                    docker buildx inspect
+                    
                     # 시스템 상태 확인
+                    echo "=== Disk Usage ==="
                     df -h
+                    echo "=== Memory Usage ==="
                     free -h
+                    echo "=== Docker System Info ==="
+                    docker system df
                 '''
             }
         }
@@ -221,8 +250,13 @@ pipeline {
                     ]) {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
-                            docker buildx create --use
-                            docker buildx build --platform linux/amd64,linux/arm64 \
+                            
+                            # buildx 빌더 설정 확인
+                            docker buildx inspect
+                            
+                            # 빌드 시도 (캐시 사용하지 않음)
+                            docker buildx build --no-cache \
+                                --platform linux/amd64,linux/arm64 \
                                 -t ${DOCKER_IMAGE}:v1.1 \
                                 -t ${DOCKER_IMAGE}:latest \
                                 --push .
