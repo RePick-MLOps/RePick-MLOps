@@ -22,7 +22,7 @@ class MaxIterationCallbackHandler(BaseCallbackHandler):
 
 def test_chat():
     """에이전트와의 대화를 테스트하는 함수"""
-    db_path = r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb"
+    db_path = r"/Users/jeonghyeran/Desktop/RePick-MLOps/data/vectordb"
 
     # 최대 2번의 도구 사용만 허용
     callback = MaxIterationCallbackHandler(max_iterations=2)

@@ -31,7 +31,7 @@ def retriever_tool(db_path: str, name: str = "retrieve_tool"):
 
 
 if __name__ == "__main__":
-    tool = retriever_tool(db_path=r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb")
+    tool = retriever_tool(db_path=r"/Users/jeonghyeran/Desktop/RePick-MLOps/data/vectordb")
     results = tool.run(
         "롯데쇼핑의 ESG 점수를 전체 평균과 비교한 그래프가 어떻게 되어 있나요?"
     )
