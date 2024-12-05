@@ -260,31 +260,30 @@ pipeline {
                     string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
                 ]) {
                     sh '''
-                        echo "=== S3 업로드 디버깅 ==="
-                        echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
+                        echo "=== S3 업로드 시작 ==="
                         
-                        echo "=== 업로드할 vectordb 디렉토리 내용 ==="
-                        ls -la data/vectordb/
+                        # 기존 S3 데이터 백업
+                        echo "=== 기존 S3 데이터 백업 ==="
+                        timestamp=$(date +%Y%m%d_%H%M%S)
+                        aws s3 cp s3://repick-chromadb/vectordb/chroma.sqlite3 s3://repick-chromadb/vectordb/backup/chroma.sqlite3_${timestamp} || true
+                        aws s3 cp s3://repick-chromadb/vectordb/processed_states.json s3://repick-chromadb/vectordb/backup/processed_states.json_${timestamp} || true
                         
-                        # chroma.sqlite3 업로드
+                        echo "=== 로컬 파일 확인 ==="
+                        ls -lh data/vectordb/
+                        
+                        echo "=== 파일 업로드 ==="
                         if [ -f data/vectordb/chroma.sqlite3 ]; then
-                            echo "Uploading chroma.sqlite3..."
-                            aws s3 cp data/vectordb/chroma.sqlite3 s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3
-                        else
-                            echo "chroma.sqlite3 file not found"
+                            aws s3 cp data/vectordb/chroma.sqlite3 s3://repick-chromadb/vectordb/chroma.sqlite3
+                            echo "chroma.sqlite3 업로드 완료"
                         fi
                         
-                        # processed_states.json 업로드
                         if [ -f data/vectordb/processed_states.json ]; then
-                            echo "Uploading processed_states.json..."
-                            aws s3 cp data/vectordb/processed_states.json s3://${AWS_S3_BUCKET}/vectordb/processed_states.json
-                        else
-                            echo "processed_states.json file not found"
+                            aws s3 cp data/vectordb/processed_states.json s3://repick-chromadb/vectordb/processed_states.json
+                            echo "processed_states.json 업로드 완료"
                         fi
                         
-                        echo "=== S3 업로드 완료 ==="
                         echo "=== S3 버킷 내용 확인 ==="
-                        aws s3 ls s3://${AWS_S3_BUCKET}/vectordb/
+                        aws s3 ls s3://repick-chromadb/vectordb/
                     '''
                 }
             }
