@@ -10,7 +10,7 @@ pipeline {
     parameters {
         choice(
             name: 'UPDATE_TYPE',
-            choices: ['all', 'pdf-only', 'docker-only'],
+            choices: ['all', 'pdf-only', 'docker-only', 'ec2-only'],
             description: '업데이트 유형을 선택하세요'
         )
     }
@@ -226,6 +226,16 @@ pipeline {
             }
         }
         
+        stage('Download Existing VectorDB') {
+            steps {
+                sh '''
+                    mkdir -p data/vectordb
+                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
+                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
+                '''
+            }
+        }
+        
         stage('Upload to S3') {
             when {
                 expression { 
@@ -271,18 +281,9 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             
-                            # buildx 빌더 설정
-                            docker buildx create --use --name mybuilder --driver docker-container --driver-opt network=host
-                            
-                            # 빌드 캐시 사용 및 병렬 빌드 활성화
-                            docker buildx build \
-                                --platform linux/amd64,linux/arm64 \
-                                --build-arg BUILDKIT_INLINE_CACHE=1 \
-                                --cache-from type=registry,ref=${DOCKER_IMAGE}:buildcache \
-                                --cache-to type=registry,ref=${DOCKER_IMAGE}:buildcache,mode=max \
-                                -t ${DOCKER_IMAGE}:v1.1 \
-                                -t ${DOCKER_IMAGE}:latest \
-                                --push .
+                            # 일반 Docker build 사용
+                            docker build -t ${DOCKER_IMAGE}:1.2 .
+                            docker push ${DOCKER_IMAGE}:1.2
                         '''
                     }
                 }
@@ -292,7 +293,7 @@ pipeline {
         stage('Deploy to ECS') {
             when {
                 expression { 
-                    return params.UPDATE_TYPE in ['all', 'docker-only']
+                    return params.UPDATE_TYPE in ['all', 'ec2-only']
                 }
             }
             steps {
@@ -323,7 +324,7 @@ pipeline {
                 }
             }
         }
-    }
+
     
     post {
         always {

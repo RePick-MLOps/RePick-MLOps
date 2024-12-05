@@ -1,8 +1,15 @@
 FROM continuumio/miniconda3:latest as builder
 
+ARG BUILDKIT_INLINE_CACHE=1
 WORKDIR /app
 
-# 시스템 패키지 설치 최적화
+# pip 설정
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONUNBUFFERED=1
+
+# 시스템 패키지 설치
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     g++ \
@@ -13,13 +20,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# pip 캐시 사용하지 않음
-ENV PIP_NO_CACHE_DIR=1
+# 기본 의존성 먼저 설치 (순서 중요)
+RUN pip install --no-cache-dir -U pip wheel setuptools
 
-# 필수 Python 패키지만 먼저 설치
+# 핵심 패키지 먼저 설치
+RUN pip install --no-cache-dir \
+    numpy==2.1.3 \
+    pandas>=2.2.2 \
+    sympy==1.13.3 \
+    tenacity==8.3.0
+
+# 나머지 의존성 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir chromadb==0.4.22 \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --no-deps
+
+# 나머지 파일들 복사
+COPY . .
 
 # AWS CLI 설치 최적화
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').zip" -o "awscliv2.zip" \
