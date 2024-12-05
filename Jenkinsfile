@@ -219,6 +219,8 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
+                        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+                        echo "Running with environment:"
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
                         /usr/bin/python3 scripts/process_pdfs.py
                     '''
@@ -228,11 +230,22 @@ pipeline {
         
         stage('Download Existing VectorDB') {
             steps {
-                sh '''
-                    mkdir -p data/vectordb
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
-                '''
+                withCredentials([
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
+                ]) {
+                    sh '''
+                        echo "=== S3에서 기존 VectorDB 다운로드 ==="
+                        mkdir -p data/vectordb
+                        
+                        # 기존 데이터 다운로드
+                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/chroma.sqlite3 || true
+                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/processed_states.json || true
+                        
+                        # 다운로드된 파일 확인
+                        echo "=== 다운로드된 파일 목록 ==="
+                        ls -la data/vectordb/
+                    '''
+                }
             }
         }
         
@@ -244,25 +257,34 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
-                    usernamePassword(
-                        credentialsId: 'aws-credentials',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
                 ]) {
                     sh '''
                         echo "=== S3 업로드 디버깅 ==="
                         echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
                         
-                        echo "=== ChromaDB 데이터 직접 업로드 시작 ==="
-                        echo "=== vectordb 디렉토리 내용 ==="
+                        echo "=== 업로드할 vectordb 디렉토리 내용 ==="
                         ls -la data/vectordb/
                         
-                        # ChromaDB 데이터 직접 동기화
-                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/
+                        # chroma.sqlite3 업로드
+                        if [ -f data/vectordb/chroma.sqlite3 ]; then
+                            echo "Uploading chroma.sqlite3..."
+                            aws s3 cp data/vectordb/chroma.sqlite3 s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3
+                        else
+                            echo "chroma.sqlite3 file not found"
+                        fi
                         
-                        echo "Upload completed"
+                        # processed_states.json 업로드
+                        if [ -f data/vectordb/processed_states.json ]; then
+                            echo "Uploading processed_states.json..."
+                            aws s3 cp data/vectordb/processed_states.json s3://${AWS_S3_BUCKET}/vectordb/processed_states.json
+                        else
+                            echo "processed_states.json file not found"
+                        fi
+                        
+                        echo "=== S3 업로드 완료 ==="
+                        echo "=== S3 버킷 내용 확인 ==="
+                        aws s3 ls s3://${AWS_S3_BUCKET}/vectordb/
                     '''
                 }
             }
