@@ -16,6 +16,43 @@ pipeline {
     }
     
     stages {
+        stage('System Cleanup') {
+            steps {
+                sh '''
+                    # 시스템 캐시 정리
+                    sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'
+                    
+                    # Jenkins 작업 디렉토리 정리
+                    rm -rf ${WORKSPACE}/*
+                    
+                    # 시스템 상태 확인
+                    df -h
+                    free -h
+                '''
+            }
+        }
+        
+        stage('Clean Docker') {
+            steps {
+                sh '''
+                    # 모든 중지된 컨테이너 제거
+                    docker container prune -f
+                    
+                    # 사용하지 않는 이미지 제거
+                    docker image prune -a -f
+                    
+                    # 빌드 캐시 제거
+                    docker builder prune -f --all
+                    
+                    # Docker 시스템 정리
+                    docker system prune -af --volumes
+                    
+                    # 시스템 상태 확인
+                    df -h
+                '''
+            }
+        }
+        
         stage('Checkout') {
             steps {
                 checkout scm
@@ -233,9 +270,7 @@ pipeline {
     
     post {
         always {
-            script {
-                deleteDir()
-            }
+            cleanWs()
         }
     }
 } 
