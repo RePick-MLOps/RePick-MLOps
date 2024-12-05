@@ -1,29 +1,49 @@
-# Miniconda 기반 이미지 사용
-FROM continuumio/miniconda3:latest
+FROM continuumio/miniconda3:latest as builder
 
+ARG BUILDKIT_INLINE_CACHE=1
 WORKDIR /app
 
-# 시스템 패키지 설치 (AWS CLI 포함)
-RUN apt-get update && apt-get install -y \
+# pip 설정
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DEFAULT_TIMEOUT=300
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONUNBUFFERED=1
+
+# 시스템 패키지 설치
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    g++ \
+    cmake \
     curl \
     unzip \
     tar \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
-    && unzip awscliv2.zip \
-    && ./aws/install \
-    && rm -rf aws awscliv2.zip \
-    && apt-get clean \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY environment.yml .
+# 기본 의존성 먼저 설치 (순서 중요)
+RUN pip install --no-cache-dir -U pip wheel setuptools
 
-# Conda 환경 생성 및 의존성 설치
-RUN conda env create -f environment.yml && \
-    conda clean -a && \
-    echo "source activate my_env" > ~/.bashrc
+# 핵심 패키지 먼저 설치
+RUN pip install --no-cache-dir \
+    numpy==2.1.3 \
+    pandas>=2.2.2 \
+    sympy==1.13.3 \
+    tenacity==8.3.0
 
-ENV PATH /opt/conda/envs/my_env/bin:$PATH
+# 나머지 의존성 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt --no-deps
 
+# 나머지 파일들 복사
+COPY . .
+
+# AWS CLI 설치 최적화
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').zip" -o "awscliv2.zip" \
+    && unzip -q awscliv2.zip \
+    && ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update \
+    && rm -rf aws awscliv2.zip
+
+# 필요한 파일들만 복사
 COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
@@ -33,7 +53,7 @@ COPY src ./src
 COPY scripts ./scripts
 COPY tools ./tools
 
-# S3에서 ChromaDB 데이터를 다운로드하는 스크립트 생성
+# 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
     aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz /tmp/vectordb.tar.gz && \
     tar -xzf /tmp/vectordb.tar.gz -C /app/data/vectordb && \
