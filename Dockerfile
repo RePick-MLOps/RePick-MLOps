@@ -10,7 +10,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     unzip \
     tar \
-    && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+    python3-dev \
+    && if [ "$(uname -m)" = "x86_64" ]; then \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; \
+    else \
+    curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"; \
+    fi \
     && unzip awscliv2.zip \
     && ./aws/install \
     && rm -rf aws awscliv2.zip \
@@ -20,8 +25,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # pip로 의존성 설치
-RUN pip install --no-cache-dir chromadb==0.4.22 \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir wheel setuptools && \
+    pip install --no-cache-dir chromadb==0.4.22 && \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY agents ./agents
 COPY app ./app
