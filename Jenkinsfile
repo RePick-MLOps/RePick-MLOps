@@ -271,12 +271,15 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             
-                            # buildx 빌더 설정 확인
-                            docker buildx inspect
+                            # buildx 빌더 설정
+                            docker buildx create --use --name mybuilder --driver docker-container --driver-opt network=host
                             
-                            # 빌드 시도 (캐시 사용하지 않음)
-                            docker buildx build --no-cache \
+                            # 빌드 캐시 사용 및 병렬 빌드 활성화
+                            docker buildx build \
                                 --platform linux/amd64,linux/arm64 \
+                                --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                --cache-from type=registry,ref=${DOCKER_IMAGE}:buildcache \
+                                --cache-to type=registry,ref=${DOCKER_IMAGE}:buildcache,mode=max \
                                 -t ${DOCKER_IMAGE}:v1.1 \
                                 -t ${DOCKER_IMAGE}:latest \
                                 --push .
