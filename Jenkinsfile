@@ -324,7 +324,7 @@ pipeline {
                 }
             }
         }
-
+    }
     
     post {
         always {
