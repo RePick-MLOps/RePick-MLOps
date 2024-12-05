@@ -51,6 +51,19 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
+                    apt-get update && apt-get install -y \
+                        curl \
+                        unzip \
+                        tar \
+                        build-essential \
+                        g++ \
+                        && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" \
+                        && unzip awscliv2.zip \
+                        && ./aws/install \
+                        && rm -rf aws awscliv2.zip \
+                        && apt-get clean \
+                        && rm -rf /var/lib/apt/lists/*
+                    
                     /usr/bin/python3 -m pip install --upgrade pip
                     /usr/bin/python3 -m pip install pyOpenSSL==23.2.0
                     /usr/bin/python3 -m pip install -r requirements.txt
@@ -145,22 +158,13 @@ pipeline {
                     sh '''
                         echo "=== S3 업로드 디버깅 ==="
                         echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
-                        echo "전체 S3 URI: s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz"
                         
-                        echo "Starting ChromaDB upload to S3..."
+                        echo "=== ChromaDB 데이터 직접 업로드 시작 ==="
                         echo "=== vectordb 디렉토리 내용 ==="
                         ls -la data/vectordb/
                         
-                        echo "=== tar 파일 생성 시작 ==="
-                        cd data
-                        tar -czvf ../vectordb.tar.gz vectordb/
-                        cd ..
-                        
-                        echo "=== 생성된 tar 파일 확인 ==="
-                        ls -lh vectordb.tar.gz
-                        
-                        echo "=== AWS S3 업로드 시작 ==="
-                        aws s3 cp vectordb.tar.gz s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz --debug
+                        # ChromaDB 데이터 직접 동기화
+                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/ --delete
                         
                         echo "Upload completed"
                     '''

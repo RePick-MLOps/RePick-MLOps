@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # pip로 의존성 설치
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir chromadb==0.4.22 \
+    && pip install --no-cache-dir -r requirements.txt
 
 COPY agents ./agents
 COPY app ./app
