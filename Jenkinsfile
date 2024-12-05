@@ -260,7 +260,7 @@ pipeline {
                         ls -la data/vectordb/
                         
                         # ChromaDB 데이터 직접 동기화
-                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/ --delete
+                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/
                         
                         echo "Upload completed"
                     '''
