@@ -11,16 +11,17 @@ RUN apt-get update && apt-get install -y \
     unzip \
     tar \
     python3-dev \
-    && if [ "$(uname -m)" = "x86_64" ]; then \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; \
-    else \
-    curl "https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip" -o "awscliv2.zip"; \
-    fi \
-    && unzip awscliv2.zip \
-    && ./aws/install \
+    && curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/aarch64/').zip" -o "awscliv2.zip" \
+    && unzip -q awscliv2.zip \
+    && ./aws/install --bin-dir /usr/local/bin --install-dir /usr/local/aws-cli --update \
     && rm -rf aws awscliv2.zip \
+    && aws --version \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+RUN rm -rf /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/examples/* \
+    && rm -rf /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/topics/* \
+    && find /usr/local/aws-cli/v2/current/dist/aws/dist/awscli/data/ -name "*.json" ! -name "endpoints.json" -delete
 
 COPY requirements.txt .
 
