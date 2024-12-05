@@ -65,8 +65,8 @@ pipeline {
                         && rm -rf /var/lib/apt/lists/*
                     
                     /usr/bin/python3 -m pip install --upgrade pip
-                    /usr/bin/python3 -m pip install pyOpenSSL==23.2.0
-                    /usr/bin/python3 -m pip install -r requirements.txt
+                    /usr/bin/python3 -m pip install --no-cache-dir pyOpenSSL==23.2.0
+                    /usr/bin/python3 -m pip install --no-cache-dir -r requirements.txt
                 '''
             }
         }

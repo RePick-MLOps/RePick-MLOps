@@ -2,8 +2,11 @@ FROM continuumio/miniconda3:latest
 
 WORKDIR /app
 
-# 시스템 패키지 설치 (AWS CLI 포함)
+# 필요한 빌드 도구들을 먼저 설치
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    g++ \
+    cmake \
     curl \
     unzip \
     tar \
