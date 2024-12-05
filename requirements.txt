@@ -31,3 +31,6 @@ s3fs>=2024.2.0
 selenium
 webdriver_manager
 pyOpenSSL==23.2.0
+openai
+python-dotenv
+python-multipart

@@ -116,10 +116,14 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-                    /usr/bin/python3 scripts/process_pdfs.py
-                '''
+                withCredentials([
+                    string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
+                ]) {
+                    sh '''
+                        echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
+                        /usr/bin/python3 scripts/process_pdfs.py
+                    '''
+                }
             }
         }
         
@@ -165,15 +169,8 @@ pipeline {
         }
         
         stage('Build and Push Docker') {
-            when {
-                expression { 
-                    return params.UPDATE_TYPE in ['all', 'docker-only']
-                }
-            }
             steps {
                 script {
-                    def version = env.TAG_NAME ? env.TAG_NAME : 'latest'
-                    
                     withCredentials([
                         usernamePassword(
                             credentialsId: 'docker-hub-credentials',
@@ -181,14 +178,14 @@ pipeline {
                             passwordVariable: 'DOCKER_PASSWORD'
                         )
                     ]) {
-                        sh """
-                            docker login -u ${DOCKER_USERNAME} -p ${DOCKER_PASSWORD}
+                        sh '''
+                            echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             docker buildx create --use
                             docker buildx build --platform linux/amd64,linux/arm64 \
                                 -t ${DOCKER_IMAGE}:v1.1 \
                                 -t ${DOCKER_IMAGE}:latest \
                                 --push .
-                        """
+                        '''
                     }
                 }
             }

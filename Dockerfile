@@ -1,4 +1,3 @@
-# Miniconda 기반 이미지 사용
 FROM continuumio/miniconda3:latest
 
 WORKDIR /app
@@ -15,14 +14,10 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY environment.yml .
+COPY requirements.txt .
 
-# Conda 환경 생성 및 의존성 설치
-RUN conda env create -f environment.yml && \
-    conda clean -a && \
-    echo "source activate my_env" > ~/.bashrc
-
-ENV PATH /opt/conda/envs/my_env/bin:$PATH
+# pip로 의존성 설치
+RUN pip install -r requirements.txt
 
 COPY agents ./agents
 COPY app ./app
