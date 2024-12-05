@@ -52,7 +52,7 @@ pipeline {
                     # default 빌더를 제외한 모든 빌더 이름 추출 및 제거
                     docker buildx ls | while read line; do
                         if echo "$line" | grep -v "default" | grep -v "NAME" | grep -q "docker"; then
-                            builder=$(echo "$line" | awk '{print $1}' | sed 's/\*$//')
+                            builder=$(echo "$line" | awk '{print $1}' | sed "s/*$//")
                             if [ ! -z "$builder" ]; then
                                 echo "Removing builder: $builder"
                                 docker buildx rm -f "$builder" || true
