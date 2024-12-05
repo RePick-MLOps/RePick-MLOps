@@ -269,6 +269,11 @@ pipeline {
         }
         
         stage('Build and Push Docker') {
+            when {
+                expression { 
+                    return params.UPDATE_TYPE in ['all', 'docker-only']
+                }
+            }
             steps {
                 script {
                     withCredentials([
@@ -281,28 +286,16 @@ pipeline {
                         sh '''
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             
-                            # 일반 Docker build 사용
+                            # Docker 이미지 빌드 및 푸시
                             docker build -t ${DOCKER_IMAGE}:1.2 .
                             docker push ${DOCKER_IMAGE}:1.2
+                            
+                            # 빌드 완료 확인
+                            echo "Docker 이미지가 성공적으로 빌드되어 Docker Hub에 푸시되었습니다."
+                            echo "이미지: ${DOCKER_IMAGE}:1.2"
                         '''
                     }
                 }
-            }
-        }
-        
-        stage('Deploy to ECS') {
-            when {
-                expression { 
-                    return params.UPDATE_TYPE in ['all', 'ec2-only']
-                }
-            }
-            steps {
-                sh '''
-                    aws ecs update-service \
-                        --cluster repick-cluster \
-                        --service repick-service \
-                        --force-new-deployment
-                '''
             }
         }
         
