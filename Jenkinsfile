@@ -15,12 +15,21 @@ pipeline {
         )
     }
 
+    triggers {
+        cron('0 22 * * *')
+    }
+    
     stages {
         stage('Daily Crawling') {
             when {
-                expression { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) == 22 }
-                expression {
-                    return params.UPDATE_TYPE in ['all', 'crawling-only']
+                anyOf {
+                    allOf {
+                        triggeredBy 'TimerTrigger'
+                        expression { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) == 22 }
+                    }
+                    expression {
+                        return params.UPDATE_TYPE in ['all', 'crawling-only']
+                    }
                 }
             }
             steps {
