@@ -10,19 +10,18 @@ pipeline {
     parameters {
         choice(
             name: 'UPDATE_TYPE',
-            choices: ['all', 'pdf-only', 'docker-only', 'ec2-only'],
+            choices: ['all','crawling-only', 'pdf-only', 'docker-only', 'ec2-only'],
             description: '업데이트 유형을 선택하세요'
         )
-    }
-
-    triggers {
-        cron('0 22 * * *')
     }
 
     stages {
         stage('Daily Crawling') {
             when {
-                triggeredBy 'TimerTrigger'
+                expression { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) == 22 }
+                expression {
+                    return params.UPDATE_TYPE in ['all', 'crawling-only']
+                }
             }
             steps {
                 withCredentials([
@@ -46,9 +45,7 @@ pipeline {
                 }
             }
         }
-    }
-    
-    stages {
+
         stage('System Cleanup') {
             steps {
                 sh '''
@@ -357,10 +354,28 @@ pipeline {
             cleanWs()
         }
         success {
-            echo 'Daily crawling completed successfully'
+            slackSend (
+                channel: '#jenkins',
+                color: 'good',
+                message: """
+                    :white_check_mark: 파이프라인 실행 성공
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
         }
         failure {
-            echo 'Daily crawling failed'
+            slackSend (
+                channel: '#jenkins',
+                color: 'danger',
+                message: """
+                    :x: 파이프라인 실행 실패
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
         }
     }
 } 
