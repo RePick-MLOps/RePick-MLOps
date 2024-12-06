@@ -3,6 +3,7 @@ import sys
 import time
 import os
 import logging
+import psutil
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
@@ -62,6 +63,27 @@ def process_single_pdf_with_retry(pdf_path):
             logger.warning("Rate limit 도달. 60초 대기 후 재시도...")
             time.sleep(60)  # 1분 대기
         raise
+
+
+def process_single_pdf(pdf_path):
+    try:
+        logger.info(f"PDF 파일 크기: {os.path.getsize(pdf_path)} bytes")
+        logger.info(
+            f"시스템 가용 메모리: {psutil.virtual_memory().available / 1024 / 1024:.2f} MB"
+        )
+
+        # PDF 처리 로직
+        state = process_single_pdf(pdf_path)
+
+        logger.info(f"처리된 상태: {state is not None}")
+        if state is not None:
+            logger.info(f"상태 키: {state.keys()}")
+
+        return state
+
+    except Exception as e:
+        logger.error(f"PDF 처리 중 에러 발생: {str(e)}", exc_info=True)
+        return None
 
 
 def process_new_pdfs():
