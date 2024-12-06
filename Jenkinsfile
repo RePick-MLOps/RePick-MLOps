@@ -10,12 +10,51 @@ pipeline {
     parameters {
         choice(
             name: 'UPDATE_TYPE',
-            choices: ['all', 'pdf-only', 'docker-only', 'ec2-only'],
+            choices: ['all','crawling-only', 'pdf-only', 'docker-only', 'ec2-only'],
             description: '업데이트 유형을 선택하세요'
         )
     }
-    
+
+    triggers {
+        cron('0 22 * * *')
+    }
+
     stages {
+        stage('Daily Crawling') {
+            when {
+                anyOf {
+                    allOf {
+                        triggeredBy 'TimerTrigger'
+                        expression { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) == 22 }
+                    }
+                    expression {
+                        return params.UPDATE_TYPE in ['all', 'crawling-only']
+                    }
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        echo "=== Starting Daily Crawling ==="
+                        export PYTHONPATH="${WORKSPACE}"
+                        
+                        # Chromium 브라우저 설치
+                        sudo apt-get update && sudo apt-get install -y chromium-browser
+                        
+                        # 크롤링 실행
+                        python3 -m src.data_collection.crawling
+                        
+                        echo "=== Crawling Completed ==="
+                    '''
+                }
+            }
+        }
+
         stage('System Cleanup') {
             steps {
                 sh '''
@@ -219,8 +258,6 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
-                        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-                        echo "Running with environment:"
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
                         /usr/bin/python3 scripts/process_pdfs.py
                     '''
@@ -230,22 +267,11 @@ pipeline {
         
         stage('Download Existing VectorDB') {
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
-                ]) {
-                    sh '''
-                        echo "=== S3에서 기존 VectorDB 다운로드 ==="
-                        mkdir -p data/vectordb
-                        
-                        # 기존 데이터 다운로드
-                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/chroma.sqlite3 || true
-                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/processed_states.json || true
-                        
-                        # 다운로드된 파일 확인
-                        echo "=== 다운로드된 파일 목록 ==="
-                        ls -la data/vectordb/
-                    '''
-                }
+                sh '''
+                    mkdir -p data/vectordb
+                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
+                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
+                '''
             }
         }
         
@@ -257,33 +283,25 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
+                    usernamePassword(
+                        credentialsId: 'aws-credentials',
+                        usernameVariable: 'AWS_ACCESS_KEY_ID',
+                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                    )
                 ]) {
                     sh '''
-                        echo "=== S3 업로드 시작 ==="
+                        echo "=== S3 업로드 디버깅 ==="
+                        echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
                         
-                        # 기존 S3 데이터 백업
-                        echo "=== 기존 S3 데이터 백업 ==="
-                        timestamp=$(date +%Y%m%d_%H%M%S)
-                        aws s3 cp s3://repick-chromadb/vectordb/chroma.sqlite3 s3://repick-chromadb/vectordb/backup/chroma.sqlite3_${timestamp} || true
-                        aws s3 cp s3://repick-chromadb/vectordb/processed_states.json s3://repick-chromadb/vectordb/backup/processed_states.json_${timestamp} || true
+                        echo "=== ChromaDB 데이터 직접 업로드 시작 ==="
+                        echo "=== vectordb 디렉토리 내용 ==="
+                        ls -la data/vectordb/
                         
-                        echo "=== 로컬 파일 확인 ==="
-                        ls -lh data/vectordb/
+                        # ChromaDB 데이터 직접 동기화
+                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/
                         
-                        echo "=== 파일 업로드 ==="
-                        if [ -f data/vectordb/chroma.sqlite3 ]; then
-                            aws s3 cp data/vectordb/chroma.sqlite3 s3://repick-chromadb/vectordb/chroma.sqlite3
-                            echo "chroma.sqlite3 업로드 완료"
-                        fi
-                        
-                        if [ -f data/vectordb/processed_states.json ]; then
-                            aws s3 cp data/vectordb/processed_states.json s3://repick-chromadb/vectordb/processed_states.json
-                            echo "processed_states.json 업로드 완료"
-                        fi
-                        
-                        echo "=== S3 버킷 내용 확인 ==="
-                        aws s3 ls s3://repick-chromadb/vectordb/
+                        echo "Upload completed"
                     '''
                 }
             }
@@ -308,12 +326,12 @@ pipeline {
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             
                             # Docker 이미지 빌드 및 푸시
-                            docker build -t ${DOCKER_IMAGE}:latest .
-                            docker push ${DOCKER_IMAGE}:latest
+                            docker build -t ${DOCKER_IMAGE}:1.2 .
+                            docker push ${DOCKER_IMAGE}:1.2
                             
                             # 빌드 완료 확인
                             echo "Docker 이미지가 성공적으로 빌드되어 Docker Hub에 푸시되었습니다."
-                            echo "이미지: ${DOCKER_IMAGE}:latest"
+                            echo "이미지: ${DOCKER_IMAGE}:1.2"
                         '''
                     }
                 }
@@ -343,6 +361,30 @@ pipeline {
     post {
         always {
             cleanWs()
+        }
+        success {
+            slackSend (
+                channel: '#jenkins',
+                color: 'good',
+                message: """
+                    :white_check_mark: 파이프라인 실행 성공
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
+        }
+        failure {
+            slackSend (
+                channel: '#jenkins',
+                color: 'danger',
+                message: """
+                    :x: 파이프라인 실행 실패
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
         }
     }
 } 
