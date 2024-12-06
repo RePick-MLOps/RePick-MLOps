@@ -55,6 +55,10 @@ def init_driver():
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--window-size=1920,1080")
             chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-dev-tools")
+            chrome_options.add_argument("--no-default-browser-check")
+            chrome_options.add_argument("--ignore-certificate-errors")
             driver = webdriver.Chrome(service=driver_service, options=chrome_options)
         else:
             # 로컬 환경에서는 기존 설정 유지
@@ -229,7 +233,7 @@ def get_next_page_url(driver, current_page, is_industry=False):
             next_page_url = f"https://finance.naver.com/research/company_list.naver?&page={next_page}"
 
         logging.info(
-            f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}"
+            f"현재 페이지: {current_page}, ��음 페이지로 이동: {next_page_url}"
         )
         return next_page_url
     except Exception as e:
