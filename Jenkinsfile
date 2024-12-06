@@ -24,13 +24,22 @@ pipeline {
             steps {
                 sh '''
                     echo "=== Installing Chrome and dependencies ==="
-                    sudo apt-get update
-                    sudo apt-get remove -y chromium-browser chromium-chromedriver
-                    sudo apt-get install -y chromium-browser chromium-chromedriver xvfb
                     
-                    # Chrome 설치 확인
-                    chromium-browser --version
-                    chromedriver --version
+                    # snap 제거
+                    sudo snap remove chromium || true
+                    
+                    # apt 저장소 추가
+                    sudo apt-get update
+                    sudo apt-get install -y software-properties-common
+                    sudo add-apt-repository -y ppa:chromium-team/stable
+                    sudo apt-get update
+                    
+                    # Chromium 및 의존성 설치
+                    sudo apt-get install -y chromium-browser chromium-chromedriver xvfb xdg-utils
+                    
+                    # 설치 확인
+                    which chromium-browser
+                    which chromedriver
                     
                     # Xvfb 설정
                     export DISPLAY=:99
@@ -99,7 +108,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관련 모든 리소스 정리
+                    # buildx 관��� 모든 리소스 정리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
