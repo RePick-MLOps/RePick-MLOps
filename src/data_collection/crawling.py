@@ -43,35 +43,28 @@ def init_driver():
     try:
         driver_service = Service(ChromeDriverManager().install())
 
-        # Chrome 옵션 설정
-        chrome_options = webdriver.ChromeOptions()
-        chrome_options.add_argument("--headless")  # Headless 모드
-        chrome_options.add_argument("--no-sandbox")  # 샌드박스 비활성화
-        chrome_options.add_argument(
-            "--disable-dev-shm-usage"
-        )  # 공유 메모리 사용 비활성화
-        chrome_options.add_argument("--disable-gpu")  # GPU 하드웨어 가속 비활성화
-        chrome_options.add_argument("--window-size=1920,1080")  # 윈도우 크기 설정
-        chrome_options.add_argument("--disable-extensions")  # 확장 프로그램 비활성화
-        chrome_options.add_argument("--disable-infobars")  # 정보 표시줄 비활성화
-        chrome_options.add_argument("--remote-debugging-port=9222")  # 디버깅 포트 설정
-
-        # Chrome 드라이버 초기화
-        driver = webdriver.Chrome(service=driver_service, options=chrome_options)
+        # Jenkins 환경인 경우에만 headless 옵션 추가
+        if os.getenv("JENKINS_URL"):
+            chrome_options = webdriver.ChromeOptions()
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.binary_location = (
+                "/usr/bin/chromium-browser"  # apt로 설치된 Chrome 위치
+            )
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--window-size=1920,1080")
+            chrome_options.add_argument("--disable-extensions")
+            driver = webdriver.Chrome(service=driver_service, options=chrome_options)
+        else:
+            # 로컬 환경에서는 기존 설정 유지
+            driver = webdriver.Chrome(service=driver_service)
 
         logging.info("Chrome driver 초기화 완료")
         return driver
 
     except Exception as e:
         logging.error(f"Chrome driver 초기화 실패: {str(e)}")
-        # Chrome 버전 확인
-        try:
-            import subprocess
-
-            chrome_version = subprocess.check_output(["chromium", "--version"]).decode()
-            logging.info(f"Installed Chrome version: {chrome_version}")
-        except Exception as chrome_error:
-            logging.error(f"Chrome version check failed: {str(chrome_error)}")
         raise
 
 
