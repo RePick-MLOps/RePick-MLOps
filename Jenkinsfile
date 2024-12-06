@@ -20,6 +20,20 @@ pipeline {
     }
 
     stages {
+        stage('Setup Chrome') {
+            steps {
+                sh '''
+                    echo "=== Installing Chrome and dependencies ==="
+                    sudo apt-get update
+                    sudo apt-get install -y chromium-browser chromium-chromedriver xvfb
+                    
+                    # Xvfb 설정
+                    export DISPLAY=:99
+                    Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+                '''
+            }
+        }
+
         stage('Daily Crawling') {
             when {
                 anyOf {
@@ -40,13 +54,7 @@ pipeline {
                     string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
                 ]) {
                     sh '''
-                        # 환경 변수 확인
-                        echo "Checking MongoDB credentials:"
-                        echo "EC2_HOST is set: ${EC2_HOST:+yes}"
-                        echo "EC2_PORT is set: ${EC2_PORT:+yes}"
-                        echo "DB_USER is set: ${DB_USER:+yes}"
-                        echo "DB_PASSWORD is set: ${DB_PASSWORD:+yes}"
-                        
+                        export DISPLAY=:99
                         export PYTHONPATH="${WORKSPACE}"
                         python3 -m src.data_collection.crawling
                     '''
