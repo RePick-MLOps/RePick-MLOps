@@ -8,9 +8,18 @@ def llm_model():
     """
     return ChatOpenAI(
         model_name="gpt-4",
-        streaming=True,  # 스트리밍 응답 활성화
-        temperature=0,  # 분석이 중요하기 때문에 낮은 랜덤성 부여
-        callbacks=[
-            StreamingStdOutCallbackHandler()
-        ],  # 생성된 응답을 실시간으로 콘솔에 출력
+        streaming=True,
+        temperature=0,
+        callbacks=[StreamingStdOutCallbackHandler()],
     )
+
+if __name__ == "__main__":
+    # 모델 인스턴스 생성
+    model = llm_model()
+    
+    # 모델을 사용하여 간단한 대화 테스트
+    try:
+        response = model.invoke("안녕하세요, 당신은 누구 인가요?")
+        print("AI 응답:", response)
+    except Exception as e:
+        print("모델 호출 중 오류 발생:", e)

@@ -42,6 +42,7 @@ def tool_list(db_path: str) -> List[BaseTool]:
 
     return tools  # 생성된 도구 리스트 반환
 
+'''
 # 메인 실행부
 if __name__ == "__main__":
     # 테스트용 벡터 데이터베이스 경로 설정
@@ -128,3 +129,18 @@ create_gdp_visualization(years, gdp_growth)
                 tool.run("test_input")
         except Exception as e:
             print(f"Tool {tool.name} failed during test: {e}")
+'''
+
+if __name__ == "__main__":
+    # 테스트용 벡터 데이터베이스 경로 설정
+    test_db_path = "/Users/jeonghyeran/Desktop/RePick-MLOps/data/vectordb"
+    
+    # 도구 생성 테스트
+    print("\n=== 도구 생성 테스트 시작 ===")
+    tools = tool_list(test_db_path)
+    
+    print("\n=== 생성된 도구 목록 ===")
+    for i, tool in enumerate(tools, 1):
+        print(f"\n{i}. 도구 이름: {tool.name}")
+        print(f"   설명: {tool.description}")
+        print(f"   타입: {type(tool)}")

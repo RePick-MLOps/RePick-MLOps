@@ -1,3 +1,3 @@
-from .template import prompt_template
+from .template import get_prompt_template
 
-__all__ = ['prompt_template']
+__all__ = ['get_prompt_template']

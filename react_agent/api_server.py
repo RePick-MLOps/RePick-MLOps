@@ -3,12 +3,14 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from models.executor import agent_executor
-from models.chat import MaxIterationCallbackHandler
 from chat_history import ChatHistoryManager
 from io import BytesIO
 import base64
 import re
 import uvicorn
+import os
+import logging
+from typing import Optional
 
 app = FastAPI(title="RePick Chat API")
 
@@ -24,6 +26,10 @@ app.add_middleware(
 # ChatHistoryManager 인스턴스 생성
 history_manager = ChatHistoryManager()
 
+# 로깅 설정
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -32,53 +38,81 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
-    image: str = None
+    image: str | None = None
+
+
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the RePick Chat API!"}
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     try:
+        logger.info(f"Received request: {request}")
+        
         # db_path 설정
-        db_path = r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb"
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_dir)
+        db_path = os.path.join(project_root, "data", "vectordb")
+        
+        if not os.path.exists(db_path):
+            logger.error(f"Database path does not exist: {db_path}")
+            raise HTTPException(status_code=500, detail=f"Database path not found: {db_path}")
+            
+        logger.info(f"Using database path: {db_path}")
 
-        # 최대 2번의 도구 사용만 허용하는 콜백 핸들러 생성
-        callback = MaxIterationCallbackHandler(max_iterations=2)
-
-        # 에이전트 실행 및 채팅 기록 추가
+        # 에이전트 실행
         agent = agent_executor(db_path=db_path)
         agent_with_history = history_manager.create_agent_with_history(agent)
 
         try:
+            logger.info("Invoking agent...")
+            # 검색 키워드 로깅 추가
+            logger.info(f"Searching for keywords related to: {request.message}")
+            
             response = agent_with_history.invoke(
-                {"input": request.message, "chat_history": request.chat_history},
-                callbacks=[callback]  # 콜백 핸들러 추가
+                {
+                    "input": request.message,
+                    "chat_history": request.chat_history[-5:]
+                }
             )
-        except ValueError as e:
-            # 최대 반복 횟수 초과 시 현재까지의 정보로 응답
+            
+            # 검색 결과 로깅
+            logger.info(f"Retrieved documents: {response.get('intermediate_steps', [])}")
+            logger.info(f"Agent response: {response}")
+            
+        except Exception as e:
+            logger.error(f"Error during agent invocation: {str(e)}", exc_info=True)
             return ChatResponse(
-                response=f"Warning: {str(e)}\n현재까지 수집된 정보로 답변드립니다.",
-                image=None
+                response=f"죄송합니다. 문서 검색 중 오류가 발생했습니다. 다시 시도해 주세요.",
+                image=""
             )
-        
-        response = agent_with_history.invoke(
-            {"input": request.message, "chat_history": request.chat_history}
-        )
-        
-        # 응답에서 Base64 이미지 추출
-        image_data = None
+
+        # 응답 처리
+        image_data = ""
         output_text = response["output"]
         
+        # 검색된 문서 출처 추가
+        if "source_documents" in response:
+            sources = [f"- {doc.metadata.get('source', '알 수 없는 출처')}, 페이지: {doc.metadata.get('page', 'N/A')}"
+                      for doc in response["source_documents"]]
+            output_text += "\n\n출처:\n" + "\n".join(sources)
+
         # Base64 이미지 데이터 찾기
         base64_pattern = r'data:image/png;base64,[A-Za-z0-9+/=]+'
         match = re.search(base64_pattern, output_text)
         if match:
             image_data = match.group(0)
-            # 텍스트에서 이미지 데이터 제거
             output_text = re.sub(base64_pattern, '', output_text)
 
-        return ChatResponse(response=output_text, image=image_data)
+        return ChatResponse(
+            response=output_text,
+            image=image_data
+        )
 
     except Exception as e:
+        logger.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -87,7 +121,6 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# 이미지 테스트를 위한 엔드포인트 추가
 @app.get("/test-image", response_class=HTMLResponse)
 async def test_image():
     import matplotlib.pyplot as plt

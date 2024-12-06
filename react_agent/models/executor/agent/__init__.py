@@ -1,3 +1,3 @@
-from .agent import react_agent
+from .agent import get_agent
 
-__all__ = ["react_agent"]
+__all__ = ["get_agent"]
