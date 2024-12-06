@@ -36,3 +36,5 @@ python-dotenv
 python-multipart
 matplotlib
 rank_bm25
+click>=7.0
+uvicorn>=0.15.0
