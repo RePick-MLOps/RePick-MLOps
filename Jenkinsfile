@@ -25,11 +25,20 @@ pipeline {
                 sh '''
                     echo "=== Installing Chrome and dependencies ==="
                     sudo apt-get update
+                    sudo apt-get remove -y chromium-browser chromium-chromedriver
                     sudo apt-get install -y chromium-browser chromium-chromedriver xvfb
+                    
+                    # Chrome 설치 확인
+                    chromium-browser --version
+                    chromedriver --version
                     
                     # Xvfb 설정
                     export DISPLAY=:99
                     Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+                    
+                    # 권한 설정
+                    sudo chmod -R 777 /var/lib/jenkins/.wdm/
+                    sudo chown -R jenkins:jenkins /var/lib/jenkins/.wdm/
                 '''
             }
         }
