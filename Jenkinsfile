@@ -18,7 +18,7 @@ pipeline {
     triggers {
         cron('0 22 * * *')
     }
-    
+
     stages {
         stage('Daily Crawling') {
             when {
@@ -44,7 +44,7 @@ pipeline {
                         export PYTHONPATH="${WORKSPACE}"
                         
                         # Chromium 브라우저 설치
-                        apt-get update && apt-get install -y chromium-browser
+                        sudo apt-get update && sudo apt-get install -y chromium-browser
                         
                         # 크롤링 실행
                         python3 -m src.data_collection.crawling
