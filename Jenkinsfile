@@ -28,26 +28,37 @@ pipeline {
                     # snap 제거
                     sudo snap remove chromium || true
                     
-                    # apt 저장소 추가
-                    sudo apt-get update
-                    sudo apt-get install -y software-properties-common
-                    sudo add-apt-repository -y ppa:chromium-team/stable
-                    sudo apt-get update
+                    # 기존 Chrome 관련 패키지 제거
+                    sudo apt-get remove -y chromium-browser chromium-chromedriver
+                    sudo apt-get autoremove -y
                     
-                    # Chromium 및 의존성 설치
-                    sudo apt-get install -y chromium-browser chromium-chromedriver xvfb xdg-utils
+                    # 특정 버전 설치
+                    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+                    sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
                     
-                    # 설치 확인
-                    which chromium-browser
-                    which chromedriver
+                    # Chrome 버전 확인
+                    CHROME_VERSION=$(google-chrome --version | cut -d " " -f3)
+                    echo "Chrome version: $CHROME_VERSION"
                     
-                    # Xvfb 설정
+                    # ChromeDriver 설치
+                    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)
+                    wget -N https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
+                    unzip -o chromedriver_linux64.zip
+                    sudo mv -f chromedriver /usr/local/bin/chromedriver
+                    sudo chmod +x /usr/local/bin/chromedriver
+                    
+                    # Xvfb 설치 및 설정
+                    sudo apt-get install -y xvfb
                     export DISPLAY=:99
                     Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
                     
                     # 권한 설정
                     sudo chmod -R 777 /var/lib/jenkins/.wdm/
                     sudo chown -R jenkins:jenkins /var/lib/jenkins/.wdm/
+                    
+                    # 버전 확인
+                    google-chrome --version
+                    chromedriver --version
                 '''
             }
         }
@@ -86,7 +97,7 @@ pipeline {
                     # 시스템 캐시 정리
                     sync
                     
-                    # Jenkins 작업 디렉토리 정리
+                    # Jenkins 작업 디렉토�� 정리
                     rm -rf ${WORKSPACE}/*
                     
                     echo "=== Docker Cleanup ==="
@@ -108,7 +119,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관��� 모든 리소스 정리
+                    # buildx 관 모든 리소스 정리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
@@ -148,7 +159,7 @@ pipeline {
         stage('Clean Docker') {
             steps {
                 sh '''
-                    # 모든 중지된 컨테이너 제거
+                    # 모든 중지된 컨테이�� 제거
                     docker container prune -f
                     
                     # 사용하지 않는 이미지 제거

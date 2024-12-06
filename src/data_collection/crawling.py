@@ -41,29 +41,15 @@ def setup_unique_index():
 # Chrome 드라이버 초기화
 def init_driver():
     try:
-        driver_service = Service(ChromeDriverManager().install())
-
-        # Jenkins 환경인 경우에만 headless 옵션 추가
+        chrome_options = webdriver.ChromeOptions()
         if os.getenv("JENKINS_URL"):
-            chrome_options = webdriver.ChromeOptions()
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.binary_location = (
-                "/usr/bin/chromium-browser"  # apt로 설치된 Chrome 위치
-            )
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--window-size=1920,1080")
-            chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--remote-debugging-port=9222")
-            chrome_options.add_argument("--disable-dev-tools")
-            chrome_options.add_argument("--no-default-browser-check")
-            chrome_options.add_argument("--ignore-certificate-errors")
-            driver = webdriver.Chrome(service=driver_service, options=chrome_options)
-        else:
-            # 로컬 환경에서는 기존 설정 유지
-            driver = webdriver.Chrome(service=driver_service)
+            chrome_options.binary_location = "/usr/bin/google-chrome"
 
+        driver_service = Service("/usr/local/bin/chromedriver")
+        driver = webdriver.Chrome(service=driver_service, options=chrome_options)
         logging.info("Chrome driver 초기화 완료")
         return driver
 
@@ -232,9 +218,7 @@ def get_next_page_url(driver, current_page, is_industry=False):
         else:
             next_page_url = f"https://finance.naver.com/research/company_list.naver?&page={next_page}"
 
-        logging.info(
-            f"현재 페이지: {current_page}, ��음 페이지로 이동: {next_page_url}"
-        )
+        logging.info(f"현재 페이지: {current_page}, 음 페이지로 이동: {next_page_url}")
         return next_page_url
     except Exception as e:
         logging.error(f"다음 페이지 URL을 찾는 중 오류 발생: {e}")
