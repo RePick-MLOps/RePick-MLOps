@@ -14,6 +14,39 @@ pipeline {
             description: '업데이트 유형을 선택하세요'
         )
     }
+
+    triggers {
+        cron('0 22 * * *')
+    }
+
+    stages {
+        stage('Daily Crawling') {
+            when {
+                triggeredBy 'TimerTrigger'
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        echo "=== Starting Daily Crawling ==="
+                        export PYTHONPATH="${WORKSPACE}"
+                        
+                        # Chromium 브라우저 설치
+                        apt-get update && apt-get install -y chromium-browser
+                        
+                        # 크롤링 실행
+                        python3 -m src.data_collection.crawling
+                        
+                        echo "=== Crawling Completed ==="
+                    '''
+                }
+            }
+        }
+    }
     
     stages {
         stage('System Cleanup') {
@@ -322,6 +355,12 @@ pipeline {
     post {
         always {
             cleanWs()
+        }
+        success {
+            echo 'Daily crawling completed successfully'
+        }
+        failure {
+            echo 'Daily crawling failed'
         }
     }
 } 
