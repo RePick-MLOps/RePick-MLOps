@@ -7,6 +7,7 @@ import logging
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
@@ -21,6 +22,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# .env 파일 로드
+load_dotenv()
 
 
 def load_processed_states():

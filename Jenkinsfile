@@ -5,6 +5,7 @@ pipeline {
         PYTHON_VERSION = '3.11'
         AWS_REGION = 'ap-northeast-3'
         DOCKER_IMAGE = 'jeonghyeran/rp-chat-bot'
+        OPENAI_API_KEY = credentials('openai-api-key')
     }
     
     parameters {
@@ -97,7 +98,7 @@ pipeline {
                     # 시스템 캐시 정리
                     sync
                     
-                    # Jenkins 작업 디렉토�� 정리
+                    # Jenkins 작업 디렉토 정리
                     rm -rf ${WORKSPACE}/*
                     
                     echo "=== Docker Cleanup ==="
@@ -159,7 +160,7 @@ pipeline {
         stage('Clean Docker') {
             steps {
                 sh '''
-                    # 모든 중지된 컨테이�� 제거
+                    # 모든 중지된 컨테이 제거
                     docker container prune -f
                     
                     # 사용하지 않는 이미지 제거
@@ -290,14 +291,10 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([
-                    string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
-                ]) {
-                    sh '''
-                        echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
-                        /usr/bin/python3 scripts/process_pdfs.py
-                    '''
-                }
+                sh '''
+                    export OPENAI_API_KEY=${OPENAI_API_KEY}
+                    python3 scripts/process_pdfs.py
+                '''
             }
         }
         
