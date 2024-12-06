@@ -40,16 +40,15 @@ pipeline {
                     string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
                 ]) {
                     sh '''
-                        echo "=== Starting Daily Crawling ==="
+                        # 환경 변수 확인
+                        echo "Checking MongoDB credentials:"
+                        echo "EC2_HOST is set: ${EC2_HOST:+yes}"
+                        echo "EC2_PORT is set: ${EC2_PORT:+yes}"
+                        echo "DB_USER is set: ${DB_USER:+yes}"
+                        echo "DB_PASSWORD is set: ${DB_PASSWORD:+yes}"
+                        
                         export PYTHONPATH="${WORKSPACE}"
-                        
-                        # Chromium 브라우저 설치
-                        sudo apt-get update && sudo apt-get install -y chromium-browser
-                        
-                        # 크롤링 실행
                         python3 -m src.data_collection.crawling
-                        
-                        echo "=== Crawling Completed ==="
                     '''
                 }
             }

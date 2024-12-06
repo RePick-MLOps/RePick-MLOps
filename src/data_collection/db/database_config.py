@@ -8,14 +8,18 @@ load_dotenv()
 
 def get_db_connection():
     try:
-        host = os.getenv("EC2_HOST")
-        port = os.getenv("EC2_PORT")
-        user = os.getenv("DB_USER")
-        password = os.getenv("DB_PASSWORD")
+        host = os.environ.get("EC2_HOST")
+        port = os.environ.get("EC2_PORT")
+        user = os.environ.get("DB_USER")
+        password = os.environ.get("DB_PASSWORD")
 
-        # 연결 문자열 생성
-        uri = f"mongodb://{user}:{password}@{host}:{port}/research_db?authSource=admin&authMechanism=SCRAM-SHA-1"
+        # 연결 정보 로깅 (비밀번호 제외)
+        logging.info(f"MongoDB Connection Info:")
+        logging.info(f"Host: {host}")
+        logging.info(f"Port: {port}")
+        logging.info(f"User: {user}")
 
+        uri = f"mongodb://{user}:{password}@{host}:{port}/admin"
         client = MongoClient(uri)
 
         # 연결 테스트
