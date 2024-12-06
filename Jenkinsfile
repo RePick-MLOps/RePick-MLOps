@@ -98,7 +98,7 @@ pipeline {
                     # 시스템 캐시 정리
                     sync
                     
-                    # Jenkins 작업 디렉토 정리
+                    # Jenkins 작업 디렉토 정��
                     rm -rf ${WORKSPACE}/*
                     
                     echo "=== Docker Cleanup ==="
@@ -291,10 +291,14 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    export OPENAI_API_KEY=${OPENAI_API_KEY}
-                    python3 scripts/process_pdfs.py
-                '''
+                withCredentials([
+                    string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
+                ]) {
+                    sh '''
+                        echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
+                        /usr/bin/python3 scripts/process_pdfs.py
+                    '''
+                }
             }
         }
         
@@ -387,6 +391,15 @@ pipeline {
                         aws sts get-caller-identity
                     '''
                 }
+            }
+        }
+        
+        stage('Setup Python Environment') {
+            steps {
+                sh '''
+                    python3 -m pip install --upgrade pip
+                    pip3 install -r requirements.txt
+                '''
             }
         }
     }

@@ -38,3 +38,7 @@ matplotlib
 rank_bm25
 click>=7.0
 uvicorn>=0.15.0
+psutil
+python-dotenv
+openai
+tenacity
