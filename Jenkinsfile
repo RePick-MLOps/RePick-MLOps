@@ -98,7 +98,7 @@ pipeline {
                     # 시스템 캐시 정리
                     sync
                     
-                    # Jenkins 작업 디렉토 정��
+                    # Jenkins 작업 디렉토리 정리
                     rm -rf ${WORKSPACE}/*
                     
                     echo "=== Docker Cleanup ==="
@@ -406,31 +406,22 @@ pipeline {
     
     post {
         always {
+            script {
+                try {
+                    slackSend(
+                        channel: '#jenkins', 
+                        color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
+                        message: """
+                            *${currentBuild.currentResult}:* Job `${env.JOB_NAME}` build `${env.BUILD_NUMBER}`
+                            More info at: ${env.BUILD_URL}
+                        """,
+                        tokenCredentialId: 'slack-token'
+                    )
+                } catch (Exception e) {
+                    echo "Slack 알림 전송 실패: ${e.message}"
+                }
+            }
             cleanWs()
-        }
-        success {
-            slackSend (
-                channel: '#jenkins',
-                color: 'good',
-                message: """
-                    :white_check_mark: 파이프라인 실행 성공
-                    - 작업: ${env.JOB_NAME}
-                    - 빌드 번호: ${env.BUILD_NUMBER}
-                    - 상세 정보: ${env.BUILD_URL}
-                """
-            )
-        }
-        failure {
-            slackSend (
-                channel: '#jenkins',
-                color: 'danger',
-                message: """
-                    :x: 파이프라인 실행 실패
-                    - 작업: ${env.JOB_NAME}
-                    - 빌드 번호: ${env.BUILD_NUMBER}
-                    - 상세 정보: ${env.BUILD_URL}
-                """
-            )
         }
     }
 } 
