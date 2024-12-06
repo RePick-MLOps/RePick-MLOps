@@ -48,7 +48,14 @@ def init_driver():
             chrome_options.add_argument("--disable-dev-shm-usage")
             chrome_options.binary_location = "/usr/bin/google-chrome"
 
-        driver_service = Service("/usr/local/bin/chromedriver")
+            # Chrome 버전 확인 및 맞는 ChromeDriver 설치
+            from selenium.webdriver.chrome.service import Service as ChromeService
+            from webdriver_manager.chrome import ChromeDriverManager
+
+            driver_service = ChromeService(ChromeDriverManager().install())
+        else:
+            driver_service = Service("/usr/local/bin/chromedriver")
+
         driver = webdriver.Chrome(service=driver_service, options=chrome_options)
         logging.info("Chrome driver 초기화 완료")
         return driver
