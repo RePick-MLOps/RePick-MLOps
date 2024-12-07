@@ -5,17 +5,93 @@ pipeline {
         PYTHON_VERSION = '3.11'
         AWS_REGION = 'ap-northeast-3'
         DOCKER_IMAGE = 'jeonghyeran/rp-chat-bot'
+        OPENAI_API_KEY = credentials('openai-api-key')
     }
     
     parameters {
         choice(
             name: 'UPDATE_TYPE',
-            choices: ['all', 'pdf-only', 'docker-only', 'ec2-only'],
+            choices: ['all','crawling-only', 'pdf-only', 'docker-only', 'ec2-only'],
             description: '업데이트 유형을 선택하세요'
         )
     }
-    
+
+    triggers {
+        cron('0 22 * * *')
+    }
+
     stages {
+        stage('Setup Chrome') {
+            steps {
+                sh '''
+                    echo "=== Installing Chrome and dependencies ==="
+                    
+                    # snap 제거
+                    sudo snap remove chromium || true
+                    
+                    # 기존 Chrome 관련 패키지 제거
+                    sudo apt-get remove -y chromium-browser chromium-chromedriver
+                    sudo apt-get autoremove -y
+                    
+                    # 특정 버전 설치
+                    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+                    sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+                    
+                    # Chrome 버전 확인
+                    CHROME_VERSION=$(google-chrome --version | cut -d " " -f3)
+                    echo "Chrome version: $CHROME_VERSION"
+                    
+                    # ChromeDriver 설치
+                    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)
+                    wget -N https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
+                    unzip -o chromedriver_linux64.zip
+                    sudo mv -f chromedriver /usr/local/bin/chromedriver
+                    sudo chmod +x /usr/local/bin/chromedriver
+                    
+                    # Xvfb 설치 및 설정
+                    sudo apt-get install -y xvfb
+                    export DISPLAY=:99
+                    Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+                    
+                    # 권한 설정
+                    sudo chmod -R 777 /var/lib/jenkins/.wdm/
+                    sudo chown -R jenkins:jenkins /var/lib/jenkins/.wdm/
+                    
+                    # 버전 확인
+                    google-chrome --version
+                    chromedriver --version
+                '''
+            }
+        }
+
+        stage('Daily Crawling') {
+            when {
+                anyOf {
+                    allOf {
+                        triggeredBy 'TimerTrigger'
+                        expression { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) == 22 }
+                    }
+                    expression {
+                        return params.UPDATE_TYPE in ['all', 'crawling-only']
+                    }
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        export DISPLAY=:99
+                        export PYTHONPATH="${WORKSPACE}"
+                        python3 -m src.data_collection.crawling
+                    '''
+                }
+            }
+        }
+
         stage('System Cleanup') {
             steps {
                 sh '''
@@ -44,7 +120,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관련 모든 리소스 정리
+                    # buildx 관 모든 리소스 정리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
@@ -84,7 +160,7 @@ pipeline {
         stage('Clean Docker') {
             steps {
                 sh '''
-                    # 모든 중지된 컨테이너 제거
+                    # 모든 중지된 컨테이 제거
                     docker container prune -f
                     
                     # 사용하지 않는 이미지 제거
@@ -317,10 +393,34 @@ pipeline {
                 }
             }
         }
+        
+        stage('Setup Python Environment') {
+            steps {
+                sh '''
+                    python3 -m pip install --upgrade pip
+                    pip3 install -r requirements.txt
+                '''
+            }
+        }
     }
     
     post {
         always {
+            script {
+                try {
+                    slackSend(
+                        channel: '#jenkins', 
+                        color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
+                        message: """
+                            *${currentBuild.currentResult}:* Job `${env.JOB_NAME}` build `${env.BUILD_NUMBER}`
+                            More info at: ${env.BUILD_URL}
+                        """,
+                        tokenCredentialId: 'slack-token'
+                    )
+                } catch (Exception e) {
+                    echo "Slack 알림 전송 실패: ${e.message}"
+                }
+            }
             cleanWs()
         }
     }

@@ -33,7 +33,7 @@ class MongoDBHandler:
                 raise ValueError("필수 환경 변수가 설정되지 않았습니다.")
 
             # MongoDB 연결 URI 구성
-            uri = f"mongodb://{DB_USER}:{DB_PASSWORD}@{EC2_HOST}:{EC2_PORT}/"
+            uri = f"mongodb://{DB_USER}:{DB_PASSWORD}@{EC2_HOST}:{EC2_PORT}/?authSource=admin&authMechanism=SCRAM-SHA-1"
             logger.info(f"MongoDB URI: mongodb://{DB_USER}:****@{EC2_HOST}:{EC2_PORT}/")
 
             # MongoDB 클라이언트 설정
@@ -139,4 +139,4 @@ class MongoDBHandler:
 
 if __name__ == "__main__":
     with MongoDBHandler() as handler:
-        handler.download_pdf(limit=1)  # 5개의 문서만 처리
+        handler.download_pdf(limit=10)  # limit(10)개의 문서만 처리
