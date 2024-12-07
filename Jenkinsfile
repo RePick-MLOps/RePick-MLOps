@@ -295,8 +295,19 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
+                        # 1. 기존 S3의 ChromaDB 다운로드
+                        mkdir -p data/vectordb
+                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
+                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
+                        
+                        # 2. PDF 처리 및 ChromaDB 업데이트
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
-                        /usr/bin/python3 scripts/process_pdfs.py
+                        /usr/bin/python3 scripts/process_pdfs.py --append_mode
+                        
+                        # 3. 처리된 상태 파일 업데이트
+                        if [ -f "data/vectordb/processed_states.json" ]; then
+                            cat data/vectordb/processed_states.json
+                        fi
                     '''
                 }
             }
