@@ -37,7 +37,7 @@ def prompt_template() -> PromptTemplate:
         input_variables=[
             "chat_history",
             "input",
-            "tool_names",  # tools_names가 아닌 tool_names로 수정
+            "tool_names",
             "agent_scratchpad",
         ],
     )
