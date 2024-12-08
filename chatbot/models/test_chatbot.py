@@ -13,7 +13,7 @@ import subprocess
 import os
 from dotenv import load_dotenv
 
-
+# 로깅 설정
 logger = logging.getLogger(__name__)
 
 # .env 파일 로드
@@ -27,7 +27,7 @@ def load_embedding_model(model_name="jhgan/ko-sbert-sts"):
 def load_vectorstore(vectordb_path=None):
     try:
         embeddings = load_embedding_model()
-        local_db_path = "/data/vectordb"
+        local_db_path = "./data/vectordb"
         s3_bucket = "repick-chromadb"
 
         logger.info(f"ChromaDB 경로: {local_db_path}")
@@ -69,20 +69,20 @@ def load_vectorstore(vectordb_path=None):
         vectorstore = Chroma(
             client=client,
             embedding_function=embeddings,
-            collection_name="langchain",
+            collection_name="pdf_collection",
         )
 
         # 컬렉션 상태 확인
         try:
-            collection = client.get_collection("langchain")
+            collection = client.get_collection("pdf_collection")
             count = collection.count()
             logger.info(f"\n=== Chroma DB 상태 ===")
             logger.info(f"총 문서 수: {count}")
-            logger.info(f"컬렉션 이름: langchain")
+            logger.info(f"컬렉션 이름: pdf_collection")
             logger.info(f"로컬 경로: {local_db_path}")
         except Exception as e:
             logger.warning(f"컬렉션 상태 확인 실패: {str(e)}")
-            collection = client.create_collection("langchain")
+            collection = client.create_collection("pdf_collection")
             logger.info("새 컬렉션이 생성되었습니다.")
 
         return vectorstore
