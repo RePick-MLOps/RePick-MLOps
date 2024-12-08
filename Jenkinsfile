@@ -120,7 +120,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관 모든 리소스 정리
+                    # buildx 관련 모든 리소스 정리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
@@ -160,7 +160,7 @@ pipeline {
         stage('Clean Docker') {
             steps {
                 sh '''
-                    # 모든 중지된 컨테이 제거
+                    # 모든 중지된 컨테이너 제거
                     docker container prune -f
                     
                     # 사용하지 않는 이미지 제거
@@ -259,6 +259,30 @@ pipeline {
             }
         }
         
+        stage('Setup Directories') {
+            steps {
+                sh '''
+                    # 필요한 디렉토리 한 번에 생성
+                    mkdir -p data/pdf data/vectordb
+                    
+                    echo "=== 디렉토리 구조 확인 ==="
+                    ls -la data/
+                '''
+            }
+        }
+        
+        stage('Download Existing VectorDB') {
+            steps {
+                sh '''
+                    # S3에서 기존 VectorDB 다운로드
+                    aws s3 sync s3://research-db/vectordb/ data/vectordb/
+                    
+                    echo "=== 다운로드된 VectorDB 내용 ==="
+                    ls -la data/vectordb/
+                '''
+            }
+        }
+        
         stage('Download PDFs') {
             when {
                 expression { 
@@ -295,31 +319,17 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
-                        # 1. 기존 S3의 ChromaDB 다운로드
-                        mkdir -p data/vectordb
-                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
-                        aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
-                        
-                        # 2. PDF 처리 및 ChromaDB 업데이트
+                        # PDF 처리 및 ChromaDB 업데이트
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
                         /usr/bin/python3 scripts/process_pdfs.py --append_mode
                         
-                        # 3. 처리된 상태 파일 업데이트
+                        # 상태 확인
                         if [ -f "data/vectordb/processed_states.json" ]; then
+                            echo "처리된 PDF 상태:"
                             cat data/vectordb/processed_states.json
                         fi
                     '''
                 }
-            }
-        }
-        
-        stage('Download Existing VectorDB') {
-            steps {
-                sh '''
-                    mkdir -p data/vectordb
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
-                '''
             }
         }
         
@@ -331,25 +341,17 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
-                    usernamePassword(
-                        credentialsId: 'aws-credentials',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
                 ]) {
                     sh '''
-                        echo "=== S3 업로드 디버깅 ==="
-                        echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
-                        
-                        echo "=== ChromaDB 데이터 직접 업로드 시작 ==="
-                        echo "=== vectordb 디렉토리 내용 ==="
+                        echo "=== S3 업로드 시작 ==="
+                        echo "vectordb 디렉토리 내용:"
                         ls -la data/vectordb/
                         
-                        # ChromaDB 데이터 직접 동기화
-                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/
+                        # ChromaDB 데이터 동기화
+                        aws s3 sync data/vectordb/ s3://research-db/vectordb/
                         
-                        echo "Upload completed"
+                        echo "S3 업로드 완료"
                     '''
                 }
             }
@@ -417,9 +419,10 @@ pipeline {
     
     post {
         always {
+            cleanWs() // 작업 공간 정리
             script {
                 try {
-                    slackSend(
+                    slackSend( // Slack 알림
                         channel: '#jenkins', 
                         color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
                         message: """
@@ -432,7 +435,6 @@ pipeline {
                     echo "Slack 알림 전송 실패: ${e.message}"
                 }
             }
-            cleanWs()
         }
     }
 } 

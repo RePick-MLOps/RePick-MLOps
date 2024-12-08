@@ -1,40 +1,105 @@
-from langchain_community.vectorstores import Chroma, FAISS
+from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from langchain.chains import RetrievalQA
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableLambda
 from langchain.retrievers import BM25Retriever, EnsembleRetriever
 from langchain_core.documents import Document
+import chromadb
+from chromadb.config import Settings
+import logging
+import subprocess
+import os
+from dotenv import load_dotenv
+
+
+logger = logging.getLogger(__name__)
+
+# .env 파일 로드
+load_dotenv()
 
 
 def load_embedding_model(model_name="jhgan/ko-sbert-sts"):
     return HuggingFaceEmbeddings(model_name=model_name)
 
 
-def load_vectorstore(vectordb_path):
+def load_vectorstore(vectordb_path=None):
     try:
         embeddings = load_embedding_model()
-        vectorstore = Chroma(
-            persist_directory="/Users/naeun/working/RePick-MLOps/data/vectordb",
-            embedding_function=embeddings,
-            collection_name="pdf_collection",
+        local_db_path = "/data/vectordb"
+        s3_bucket = "repick-chromadb"
+
+        logger.info(f"ChromaDB 경로: {local_db_path}")
+
+        # S3에서 전체 데이터 다운로드
+        try:
+
+            # 전체 디렉토리 동기화
+            sync_cmd = f"aws s3 sync s3://repick-chromadb/vectordb {local_db_path}"
+            logger.info(f"실행 명령어: {sync_cmd}")
+            result = subprocess.run(
+                sync_cmd, shell=True, capture_output=True, text=True
+            )
+
+            if result.returncode == 0:
+                logger.info("S3에서 모든 데이터를 성공적으로 다운로드했습니다.")
+            else:
+                logger.error(f"S3 다운로드 실패: {result.stderr}")
+
+            # 로컬 디렉토리 내용 확인
+            logger.info(f"로컬 디렉토리 내용:")
+            ls_result = subprocess.run(
+                f"ls -la {local_db_path}", shell=True, capture_output=True, text=True
+            )
+            logger.info(ls_result.stdout)
+
+        except Exception as e:
+            logger.error(f"S3 다운로드 실패: {str(e)}")
+
+        # ChromaDB 클라이언트 생성
+        client = chromadb.PersistentClient(
+            path=local_db_path,
+            settings=Settings(
+                anonymized_telemetry=False, allow_reset=True, is_persistent=True
+            ),
         )
 
-        # 데이터 상세 확인
-        collection = vectorstore._collection.get()
-        print(f"\n=== Chroma DB 상태 ===")
-        print(
-            f"총 문서 수: {len(collection['documents']) if collection['documents'] else 0}"
+        # Langchain Chroma 초기화
+        vectorstore = Chroma(
+            client=client,
+            embedding_function=embeddings,
+            collection_name="langchain",
         )
-        print(f"컬렉션 이름: pdf_collection")
+
+        # 컬렉션 상태 확인
+        try:
+            collection = client.get_collection("langchain")
+            count = collection.count()
+            logger.info(f"\n=== Chroma DB 상태 ===")
+            logger.info(f"총 문서 수: {count}")
+            logger.info(f"컬렉션 이름: langchain")
+            logger.info(f"로컬 경로: {local_db_path}")
+        except Exception as e:
+            logger.warning(f"컬렉션 상태 확인 실패: {str(e)}")
+            collection = client.create_collection("langchain")
+            logger.info("새 컬렉션이 생성되었습니다.")
 
         return vectorstore
+
     except Exception as e:
-        print(f"Error loading vector store: {str(e)}")
+        logger.error(f"Error loading vector store: {str(e)}")
+        raise
+
+
+def save_to_s3():
+    """ChromaDB 데이터를 S3에 업로드"""
+    try:
+        local_db_path = "data/vectordb"
+        os.system(f"aws s3 sync {local_db_path} s3://repick-chromadb/vectordb")
+        logger.info("ChromaDB 데이터를 S3에 성공적으로 업로드했습니다.")
+    except Exception as e:
+        logger.error(f"S3 업로드 실패: {str(e)}")
         raise
 
 
@@ -64,7 +129,7 @@ Make sure you understand the intent of the question and provide the most appropr
 ###
 
 #Example Format:
-**📚 문서에서 검색한 내용기반 답변입니다**
+**📚 리포트에서 검색한 내용 기반의 답변입니다**
 
 (brief summary of the answer)
 (include table if there is a table in the context related to the question)
@@ -134,7 +199,7 @@ def initialize_retrievers(vectorstore):
         search_type="similarity", search_kwargs={"k": 5}
     )
 
-    # BM25 리트리버 초기화 (Chroma에서 문서 가져오기)
+    # BM25 리트버 초기화 (Chroma에서 문서 가져오기)
     documents = vectorstore.get()  # Chroma에서 모든 문서 가져오기
     bm25_retriever = BM25Retriever.from_documents(documents)
     bm25_retriever.k = 5
@@ -190,7 +255,7 @@ def retrieve_and_check(question, ensemble_retriever):
 
 
 def test_chatbot():
-    vectorstore = load_vectorstore("/Users/naeun/working/RePick-MLOps/data/vectordb")
+    vectorstore = load_vectorstore()
     retriever = vectorstore.as_retriever(
         search_type="similarity",
         search_kwargs={"k": 4},

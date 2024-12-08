@@ -44,20 +44,17 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_
     && rm -rf aws awscliv2.zip
 
 # 필요한 파일들만 복사
-COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
-COPY data/vectordb ./data/vectordb
-COPY prompts ./prompts
 COPY src ./src
 COPY scripts ./scripts
-COPY tools ./tools
+
+# S3에서 vectordb 다운로드 -> Jenkins에서 처리된 최신 데이터를 사용
+RUN mkdir -p /app/data/vectordb && \
+    aws s3 sync s3://research-db/vectordb/ /app/data/vectordb/
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
-    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz /tmp/vectordb.tar.gz && \
-    tar -xzf /tmp/vectordb.tar.gz -C /app/data/vectordb && \
-    rm /tmp/vectordb.tar.gz && \
     python -m app.api.test_chatbot_api' > /app/start.sh && \
     chmod +x /app/start.sh
 
