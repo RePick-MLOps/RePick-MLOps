@@ -275,7 +275,7 @@ pipeline {
             steps {
                 sh '''
                     # S3에서 기존 VectorDB 다운로드
-                    aws s3 sync s3://research-db/vectordb/ data/vectordb/
+                    aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/
                     
                     echo "=== 다운로드된 VectorDB 내용 ==="
                     ls -la data/vectordb/
@@ -349,7 +349,7 @@ pipeline {
                         ls -la data/vectordb/
                         
                         # ChromaDB 데이터 동기화
-                        aws s3 sync data/vectordb/ s3://research-db/vectordb/
+                        aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/
                         
                         echo "S3 업로드 완료"
                     '''
