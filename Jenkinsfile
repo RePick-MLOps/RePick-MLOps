@@ -357,11 +357,23 @@ pipeline {
                 ]) {
                     sh '''
                         echo "=== S3 업로드 시작 ==="
+                        
+                        # ChromaDB 디렉토리 내용 확인
                         echo "vectordb 디렉토리 내용:"
                         ls -la data/vectordb/
                         
-                        # ChromaDB 데이터 동기화
-                        aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/
+                        # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
+                        aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
+                            --exclude "*" \
+                            --include "*.sqlite3" \
+                            --include "*.json" \
+                            --include "*.bin" \
+                            --include "*.pkl" \
+                            --include "index/*"
+                        
+                        # 업로드 확인
+                        echo "=== S3 업로드된 파일 목록 ==="
+                        aws s3 ls s3://repick-chromadb/vectordb/ --recursive
                         
                         echo "S3 업로드 완료"
                     '''

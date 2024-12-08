@@ -32,10 +32,10 @@ RUN pip install --no-cache-dir \
     numpy==2.1.3 \
     pandas>=2.2.2 \
     sympy==1.13.3 \
-    tenacity==8.3.0 \
+    tenacity==8.3.0
 
-    # 나머지 의존성 설치
-    COPY requirements.txt .
+# 나머지 의존성 설치
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt --no-deps
 
 # 나머지 파일들 복사
