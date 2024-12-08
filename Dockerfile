@@ -51,7 +51,7 @@ COPY scripts ./scripts
 
 # S3에서 vectordb 다운로드 -> Jenkins에서 처리된 최신 데이터를 사용
 RUN mkdir -p /app/data/vectordb && \
-    aws s3 sync s3://research-db/vectordb/ /app/data/vectordb/
+    aws s3 sync s3://repick-chromadb/vectordb/ /app/data/vectordb/
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
