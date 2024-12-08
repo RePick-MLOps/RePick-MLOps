@@ -48,14 +48,11 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_
     && rm -rf aws awscliv2.zip
 
 # 필요한 파일들만 복사
-COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
 COPY data/vectordb ./data/vectordb
-COPY prompts ./prompts
 COPY src ./src
 COPY scripts ./scripts
-COPY tools ./tools
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
