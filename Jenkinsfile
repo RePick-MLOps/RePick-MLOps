@@ -87,6 +87,18 @@ pipeline {
                         export DISPLAY=:99
                         export PYTHONPATH="${WORKSPACE}"
                         python3 -m src.data_collection.crawling
+
+                        echo "=== Starting Daily Crawling ==="
+                        export PYTHONPATH="${WORKSPACE}"
+                        
+                        # Chromium 브라우저 설치
+                        sudo apt-get update && sudo apt-get install -y chromium-browser
+                        
+                        # 크롤링 실행
+                        python3 -m src.data_collection.crawling
+                        
+                        echo "=== Crawling Completed ==="
+
                     '''
                 }
             }
@@ -435,6 +447,30 @@ pipeline {
                     echo "Slack 알림 전송 실패: ${e.message}"
                 }
             }
+        }
+        success {
+            slackSend (
+                channel: '#jenkins',
+                color: 'good',
+                message: """
+                    :white_check_mark: 파이프라인 실행 성공
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
+        }
+        failure {
+            slackSend (
+                channel: '#jenkins',
+                color: 'danger',
+                message: """
+                    :x: 파이프라인 실행 실패
+                    - 작업: ${env.JOB_NAME}
+                    - 빌드 번호: ${env.BUILD_NUMBER}
+                    - 상세 정보: ${env.BUILD_URL}
+                """
+            )
         }
     }
 } 
