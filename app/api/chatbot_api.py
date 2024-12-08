@@ -1,73 +1,40 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
-from chatbot.models.chatbot import ChatAgent
+from react_agent.models.executor.executor import agent_executor
 import uvicorn
-import logging
-from langchain_community.chat_message_histories import ChatMessageHistory
 
-# logger 설정
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-app = FastAPI(title="RePick Chatbot API")
+app = FastAPI(title="RePick Chat API")
 
 
-# Pydantic 모델 정의
-class SendMessageRequest(BaseModel):
-    input: str
+class ChatRequest(BaseModel):
+    message: str
+    chat_history: list = []  # 선택적 채팅 기록
 
 
 class ChatResponse(BaseModel):
     response: str
 
 
-# 전역 변수로 ChatAgent 초기화
-def initialize_chat_agent():
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
     try:
-        embedding_model = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        # 벡터 DB 경로 설정
+        db_path = r"C:\Users\user\Desktop\RePick-MLOps\data\vectordb"
+
+        # 에이전트 실행
+        response = agent_executor(db_path=db_path).invoke(
+            {"input": request.message, "chat_history": request.chat_history}
         )
 
-        vectorstore = Chroma(
-            persist_directory="/Users/naeun/working/RePick-MLOps/data/vectordb",
-            embedding_function=embedding_model,
-        )
-
-        return ChatAgent(vectorstore)
+        return ChatResponse(response=response["output"])
     except Exception as e:
-        logger.error(f"ChatAgent 초기화 중 오류 발생: {str(e)}")
-        raise
-
-
-chat_agent = initialize_chat_agent()
-
-
-@app.post("/api/v1/chat/sendMessage", response_model=ChatResponse)
-async def send_message(request: SendMessageRequest):
-    try:
-        logger.info(f"Received chat request: {request}")
-        response = chat_agent.invoke_agent({"input": request.input})
-        logger.info(f"Generated response: {response}")
-        return ChatResponse(response=response)
-    except Exception as e:
-        logger.error(f"Chat processing error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/chat/getResponse")
-async def get_response():
-    return {"status": "This endpoint is unnecessary without session management"}
-
-
-# 서버 상태 확인 /ping GET 엔드포인트
-@app.get("/ping")
-async def ping():
-    return {"status": "running"}
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.api.chatbot_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.api.chat_api:app", host="0.0.0.0", port=8000, reload=True)

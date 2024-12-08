@@ -5,6 +5,7 @@ pipeline {
         PYTHON_VERSION = '3.11'
         AWS_REGION = 'ap-northeast-3'
         DOCKER_IMAGE = 'jeonghyeran/rp-chat-bot'
+        OPENAI_API_KEY = credentials('openai-api-key')
     }
     
     parameters {
@@ -20,6 +21,49 @@ pipeline {
     }
 
     stages {
+        stage('Setup Chrome') {
+            steps {
+                sh '''
+                    echo "=== Installing Chrome and dependencies ==="
+                    
+                    # snap 제거
+                    sudo snap remove chromium || true
+                    
+                    # 기존 Chrome 관련 패키지 제거
+                    sudo apt-get remove -y chromium-browser chromium-chromedriver
+                    sudo apt-get autoremove -y
+                    
+                    # 특정 버전 설치
+                    wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+                    sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+                    
+                    # Chrome 버전 확인
+                    CHROME_VERSION=$(google-chrome --version | cut -d " " -f3)
+                    echo "Chrome version: $CHROME_VERSION"
+                    
+                    # ChromeDriver 설치
+                    CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)
+                    wget -N https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip
+                    unzip -o chromedriver_linux64.zip
+                    sudo mv -f chromedriver /usr/local/bin/chromedriver
+                    sudo chmod +x /usr/local/bin/chromedriver
+                    
+                    # Xvfb 설치 및 설정
+                    sudo apt-get install -y xvfb
+                    export DISPLAY=:99
+                    Xvfb :99 -screen 0 1920x1080x24 > /dev/null 2>&1 &
+                    
+                    # 권한 설정
+                    sudo chmod -R 777 /var/lib/jenkins/.wdm/
+                    sudo chown -R jenkins:jenkins /var/lib/jenkins/.wdm/
+                    
+                    # 버전 확인
+                    google-chrome --version
+                    chromedriver --version
+                '''
+            }
+        }
+
         stage('Daily Crawling') {
             when {
                 anyOf {
@@ -40,6 +84,10 @@ pipeline {
                     string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
                 ]) {
                     sh '''
+                        export DISPLAY=:99
+                        export PYTHONPATH="${WORKSPACE}"
+                        python3 -m src.data_collection.crawling
+
                         echo "=== Starting Daily Crawling ==="
                         export PYTHONPATH="${WORKSPACE}"
                         
@@ -50,6 +98,7 @@ pipeline {
                         python3 -m src.data_collection.crawling
                         
                         echo "=== Crawling Completed ==="
+
                     '''
                 }
             }
@@ -222,6 +271,30 @@ pipeline {
             }
         }
         
+        stage('Setup Directories') {
+            steps {
+                sh '''
+                    # 필요한 디렉토리 한 번에 생성
+                    mkdir -p data/pdf data/vectordb
+                    
+                    echo "=== 디렉토리 구조 확인 ==="
+                    ls -la data/
+                '''
+            }
+        }
+        
+        stage('Download Existing VectorDB') {
+            steps {
+                sh '''
+                    # S3에서 기존 VectorDB 다운로드
+                    aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/
+                    
+                    echo "=== 다운로드된 VectorDB 내용 ==="
+                    ls -la data/vectordb/
+                '''
+            }
+        }
+        
         stage('Download PDFs') {
             when {
                 expression { 
@@ -258,20 +331,17 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
+                        # PDF 처리 및 ChromaDB 업데이트
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
-                        /usr/bin/python3 scripts/process_pdfs.py
+                        /usr/bin/python3 scripts/process_pdfs.py --append_mode
+                        
+                        # 상태 확인
+                        if [ -f "data/vectordb/processed_states.json" ]; then
+                            echo "처리된 PDF 상태:"
+                            cat data/vectordb/processed_states.json
+                        fi
                     '''
                 }
-            }
-        }
-        
-        stage('Download Existing VectorDB') {
-            steps {
-                sh '''
-                    mkdir -p data/vectordb
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 data/vectordb/ || true
-                    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json data/vectordb/ || true
-                '''
             }
         }
         
@@ -283,25 +353,17 @@ pipeline {
             }
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET'),
-                    usernamePassword(
-                        credentialsId: 'aws-credentials',
-                        usernameVariable: 'AWS_ACCESS_KEY_ID',
-                        passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                    )
+                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
                 ]) {
                     sh '''
-                        echo "=== S3 업로드 디버깅 ==="
-                        echo "AWS_S3_BUCKET: ${AWS_S3_BUCKET}"
-                        
-                        echo "=== ChromaDB 데이터 직접 업로드 시작 ==="
-                        echo "=== vectordb 디렉토리 내용 ==="
+                        echo "=== S3 업로드 시작 ==="
+                        echo "vectordb 디렉토리 내용:"
                         ls -la data/vectordb/
                         
-                        # ChromaDB 데이터 직접 동기화
-                        aws s3 sync data/vectordb/ s3://${AWS_S3_BUCKET}/vectordb/
+                        # ChromaDB 데이터 동기화
+                        aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/
                         
-                        echo "Upload completed"
+                        echo "S3 업로드 완료"
                     '''
                 }
             }
@@ -326,12 +388,12 @@ pipeline {
                             echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
                             
                             # Docker 이미지 빌드 및 푸시
-                            docker build -t ${DOCKER_IMAGE}:1.2 .
-                            docker push ${DOCKER_IMAGE}:1.2
+                            docker build -t ${DOCKER_IMAGE}:latest .
+                            docker push ${DOCKER_IMAGE}:latest
                             
                             # 빌드 완료 확인
                             echo "Docker 이미지가 성공적으로 빌드되어 Docker Hub에 푸시되었습니다."
-                            echo "이미지: ${DOCKER_IMAGE}:1.2"
+                            echo "이미지: ${DOCKER_IMAGE}:latest"
                         '''
                     }
                 }
@@ -356,11 +418,35 @@ pipeline {
                 }
             }
         }
+        
+        stage('Setup Python Environment') {
+            steps {
+                sh '''
+                    python3 -m pip install --upgrade pip
+                    pip3 install -r requirements.txt
+                '''
+            }
+        }
     }
     
     post {
         always {
-            cleanWs()
+            cleanWs() // 작업 공간 정리
+            script {
+                try {
+                    slackSend( // Slack 알림
+                        channel: '#jenkins', 
+                        color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
+                        message: """
+                            *${currentBuild.currentResult}:* Job `${env.JOB_NAME}` build `${env.BUILD_NUMBER}`
+                            More info at: ${env.BUILD_URL}
+                        """,
+                        tokenCredentialId: 'slack-token'
+                    )
+                } catch (Exception e) {
+                    echo "Slack 알림 전송 실패: ${e.message}"
+                }
+            }
         }
         success {
             slackSend (

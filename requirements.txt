@@ -32,5 +32,8 @@ selenium
 webdriver_manager
 pyOpenSSL==23.2.0
 openai
-python-dotenv
 python-multipart
+matplotlib
+rank_bm25
+click>=7.0
+psutil

@@ -3,10 +3,12 @@ import sys
 import time
 import os
 import logging
+import psutil
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 from pathlib import Path
+from dotenv import load_dotenv
 from src.vectorstore import VectorStore, process_pdf_directory
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
@@ -21,6 +23,9 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+# .env 파일 로드
+load_dotenv()
 
 
 def load_processed_states():
@@ -44,20 +49,71 @@ def is_original_pdf(filename: str, processed_states: dict) -> bool:
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry=retry_if_exception_type(Exception),
+    retry=retry_if_exception_type((Exception, ValueError)),
 )
 def process_single_pdf_with_retry(pdf_path):
-    """PDF 처리를 재시도 로직과 함께 실행합니다."""
     try:
         state = process_single_pdf(pdf_path)
         if state is None:
             raise ValueError(f"PDF 처리 실패: {pdf_path}")
         return state
     except Exception as e:
-        if "rate_limit_exceeded" in str(e):
-            logger.warning("Rate limit 도달. 60초 대기 후 재시도...")
-            time.sleep(60)  # 1분 대기
+        logger.error(f"PDF 처리 재시도 중 오류: {str(e)}")
         raise
+
+
+def process_single_pdf(pdf_path):
+    try:
+        logger.info(f"=== PDF 처리 시작: {pdf_path} ===")
+
+        # PDF 파일 유효성 검사
+        if not os.path.exists(pdf_path):
+            raise ValueError(f"PDF 파일이 존재하지 않습니다: {pdf_path}")
+
+        if os.path.getsize(pdf_path) == 0:
+            raise ValueError(f"PDF 파일이 비어있습니다: {pdf_path}")
+
+        # PDF 처리 시도
+        try:
+            from src.parser import process_single_pdf as parser_process_pdf
+
+            state = parser_process_pdf(pdf_path)
+
+            # 처리 결과 검증
+            if state is None:
+                raise ValueError(f"PDF 처리 결과가 없습니다: {pdf_path}")
+
+            required_keys = [
+                "text_summary",
+                "image_summary",
+                "table_summary",
+                "page_summary",
+            ]
+            missing_keys = [key for key in required_keys if key not in state]
+            if missing_keys:
+                logger.warning(f"누락된 키가 있습니다: {missing_keys}")
+                # 누락된 키에 대해 빈 딕셔너리 추가
+                for key in missing_keys:
+                    state[key] = {}
+
+            logger.info(f"PDF 처리 완료: {os.path.basename(pdf_path)}")
+            logger.info(f"처리된 데이터 키: {list(state.keys())}")
+            return state
+
+        except Exception as e:
+            logger.error(f"PDF 파싱 중 오류 발생: {str(e)}", exc_info=True)
+            # 기본 상태 반환
+            return {
+                "text_summary": {},
+                "image_summary": {},
+                "table_summary": {},
+                "table_markdown": {},
+                "page_summary": {},
+            }
+
+    except Exception as e:
+        logger.error(f"PDF 처리 중 치명적 오류 발생: {str(e)}", exc_info=True)
+        return None
 
 
 def process_new_pdfs():

@@ -1,7 +1,11 @@
 FROM continuumio/miniconda3:latest as builder
 
 ARG BUILDKIT_INLINE_CACHE=1
-WORKDIR /app
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+ARG AWS_DEFAULT_REGION=ap-northeast-3
+ARG AWS_S3_BUCKET=repick-chromadb
+WORKDIR /
 
 # pip 설정
 ENV PIP_NO_CACHE_DIR=1
@@ -44,19 +48,16 @@ RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-$(uname -m | sed 's/x86_
     && rm -rf aws awscliv2.zip
 
 # 필요한 파일들만 복사
-COPY agents ./agents
 COPY app ./app
 COPY chatbot ./chatbot
 COPY data/vectordb ./data/vectordb
-COPY prompts ./prompts
 COPY src ./src
 COPY scripts ./scripts
-COPY tools ./tools
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
     aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz /tmp/vectordb.tar.gz && \
-    tar -xzf /tmp/vectordb.tar.gz -C /app/data/vectordb && \
+    tar -xzf /tmp/vectordb.tar.gz -C /data/vectordb && \
     rm /tmp/vectordb.tar.gz && \
     python -m app.api.test_chatbot_api' > /app/start.sh && \
     chmod +x /app/start.sh

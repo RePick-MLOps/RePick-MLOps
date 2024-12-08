@@ -36,10 +36,29 @@ def setup_unique_index():
 
 # Chrome 드라이버 초기화
 def init_driver():
-    driver_service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=driver_service)
-    logging.info("Chrome driver 초기화 완료")
-    return driver
+    try:
+        chrome_options = webdriver.ChromeOptions()
+        if os.getenv("JENKINS_URL"):
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.binary_location = "/usr/bin/google-chrome"
+
+            # Chrome 버전 확인 및 맞는 ChromeDriver 설치
+            from selenium.webdriver.chrome.service import Service as ChromeService
+            from webdriver_manager.chrome import ChromeDriverManager
+
+            driver_service = ChromeService(ChromeDriverManager().install())
+        else:
+            driver_service = Service("/usr/local/bin/chromedriver")
+
+        driver = webdriver.Chrome(service=driver_service, options=chrome_options)
+        logging.info("Chrome driver 초기화 완료")
+        return driver
+
+    except Exception as e:
+        logging.error(f"Chrome driver 초기화 실패: {str(e)}")
+        raise
 
 # 페이지 이동 로직
 def navigate_to_tab(driver, tab_xpath, content_xpath, description):
@@ -67,6 +86,34 @@ def navigate_company_report_page(driver):
         driver,
         tab_xpath="//*[@id='contentarea_left']/div[1]/h4/span/a",
         content_xpath="//*[@id='contentarea_left']/div[2]/table[1]/tbody",
+        description="종목분석",
+    )
+
+
+# 산업분석 페이지 탐색
+def navigate_industry_report_page(driver):
+    return navigate_to_tab(
+        driver,
+        tab_xpath="//*[@id='contentarea_left']/div[3]/h4/span/a",
+        content_xpath="//*[@id='contentarea_left']/div[2]/table[1]/tbody",
+        description="산업분석",
+    )
+
+
+# 공통 데이터 추출
+def extract_common_data(row, field_mappings):
+    extracted_data = {}
+    for field, xpath in field_mappings.items():
+        try:
+            if field == "pdf_link":
+                extracted_data[field] = row.find_element(By.XPATH, xpath).get_attribute(
+                    "href"
+                )
+            else:
+                extracted_data[field] = row.find_element(By.XPATH, xpath).text
+        except Exception as e:
+            logging.warning(f"{field} 추출 오류: {e}")
+    return extracted_data
         description="종목분석"
     )
 
@@ -153,6 +200,9 @@ def get_next_page_url(driver, current_page, base_url):
     try:
         next_page = current_page + 1
         next_page_url = f"{base_url}&page={next_page}"
+        logging.info(
+            f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}"
+        )
         logging.info(f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}")
         return next_page_url
     except Exception as e:
@@ -192,17 +242,38 @@ def is_duplicate(report_id):
     db = get_db_connection()
     return db["reports"].find_one({"report_id": report_id}) is not None
 
+# 중복 확인
+def is_duplicate(report_id):
+    db = get_db_connection()
+    return db["reports"].find_one({"report_id": report_id}) is not None
+
+
 def crawl_pdfs():
     driver = init_driver()
     duplicate_found = False
 
     for report_type, navigate_func, base_url in [
+        (
+            "Company",
+            navigate_company_report_page,
+            "https://finance.naver.com/research/company_list.naver?",
+        ),
+        (
+            "Industry",
+            navigate_industry_report_page,
+            "https://finance.naver.com/research/industry_list.naver?",
+        ),
         ("Company", navigate_company_report_page, "https://finance.naver.com/research/company_list.naver?"),
         ("Industry", navigate_industry_report_page, "https://finance.naver.com/research/industry_list.naver?")
     ]:
         if navigate_func(driver):
             for current_page in range(1, 11):  # max_pages=10
                 if duplicate_found:
+                    logging.info(
+                        f"중복 발견으로 {report_type} 크롤링 중단. 페이지: {current_page}"
+                    )
+                    break  # 중복 발견 시 현재 타입의 크롤링 중단
+
                     logging.info(f"중복 발견으로 {report_type} 크롤링 중단. 페이지: {current_page}")
                     break  # 중복 발견 시 현재 타입의 크롤링 중단
                 
@@ -210,10 +281,14 @@ def crawl_pdfs():
                 if current_page > 1:
                     next_page_url = f"{base_url}&page={current_page}"
                     driver.get(next_page_url)
+
+                # 데이터 추출
+                report_data_list = extract_report_data(driver, report_type)
+
                 
                 # 데이터 추출
                 report_data_list = extract_report_data(driver, report_type)
-                
+
                 # 중복 확인 로직
                 for data in report_data_list:
                     report_id = data.get("report_id")
