@@ -22,7 +22,7 @@ app = FastAPI(title="RePick Chatbot Test API")
 
 # Pydantic 모델 정의
 class SendMessageRequest(BaseModel):
-    input: str
+    request: str
 
 
 class ChatResponse(BaseModel):
@@ -37,7 +37,7 @@ qa_chain = test_chatbot()
 async def send_message(request: SendMessageRequest):
     try:
         logger.info(f"Received chat request: {request}")
-        response = qa_chain.invoke(request.input)
+        response = qa_chain.invoke(request.request)
         logger.info(f"Generated response: {response}")
         return ChatResponse(response=response)
     except Exception as e:
