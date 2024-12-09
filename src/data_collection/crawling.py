@@ -119,32 +119,6 @@ def extract_common_data(row, field_mappings):
     return extracted_data
 
 
-# 산업분석 페이지 탐색
-def navigate_industry_report_page(driver):
-    return navigate_to_tab(
-        driver,
-        tab_xpath="//*[@id='contentarea_left']/div[3]/h4/span/a",
-        content_xpath="//*[@id='contentarea_left']/div[2]/table[1]/tbody",
-        description="산업분석",
-    )
-
-
-# 공통 데이터 추출
-def extract_common_data(row, field_mappings):
-    extracted_data = {}
-    for field, xpath in field_mappings.items():
-        try:
-            if field == "pdf_link":
-                extracted_data[field] = row.find_element(By.XPATH, xpath).get_attribute(
-                    "href"
-                )
-            else:
-                extracted_data[field] = row.find_element(By.XPATH, xpath).text
-        except Exception as e:
-            logging.warning(f"{field} 추출 오류: {e}")
-    return extracted_data
-
-
 # 리포트 데이터 추출
 def extract_report_data(driver, report_type):
     report_data_list = []
@@ -201,58 +175,6 @@ def save_to_database(data_list, collection_name):
             logging.warning(f"{data['report_id']} 중복으로 인해 저장되지 않았습니다.")
 
 
-# 다음 페이지 URL 가져오기
-def get_next_page_url(driver, current_page, base_url):
-    try:
-        next_page = current_page + 1
-        next_page_url = f"{base_url}&page={next_page}"
-        logging.info(
-            f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}"
-        )
-        logging.info(
-            f"현재 페이지: {current_page}, 다음 페이지로 이동: {next_page_url}"
-        )
-        return next_page_url
-    except Exception as e:
-        logging.error(f"다음 페이지 URL을 찾는 중 오류 발생: {e}")
-        return None
-
-
-def crawl_reports(driver, max_pages, report_type, get_page_url_func, extract_data_func):
-    report_data_list = []
-    current_page = 1
-
-    while current_page <= max_pages:
-        if current_page == 1:
-            report_data_list.extend(extract_data_func(driver, report_type))
-            logging.info(f"페이지 {current_page} 데이터 크롤링 완료")
-        else:
-            next_page_url = get_page_url_func(driver, current_page)
-            if not next_page_url:
-                logging.info("다음 페이지가 없거나 오류 발생")
-                break
-
-            driver.get(next_page_url)
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located(
-                    (By.XPATH, "//*[@id='contentarea_left']/div[2]/table[1]/tbody")
-                )
-            )
-            logging.info(f"페이지 {current_page} 로딩 완료")
-            report_data_list.extend(extract_data_func(driver, report_type))
-            logging.info(f"페이지 {current_page} 데이터 크롤링 완료")
-
-        current_page += 1
-
-    return report_data_list
-
-
-# 중복 확인
-def is_duplicate(report_id):
-    db = get_db_connection()
-    return db["reports"].find_one({"report_id": report_id}) is not None
-
-
 # 중복 확인
 def is_duplicate(report_id):
     db = get_db_connection()
@@ -261,7 +183,6 @@ def is_duplicate(report_id):
 
 def crawl_pdfs():
     driver = init_driver()
-    duplicate_found = False
 
     for report_type, navigate_func, base_url in [
         (
@@ -277,12 +198,6 @@ def crawl_pdfs():
     ]:
         if navigate_func(driver):
             for current_page in range(1, 11):  # max_pages=10
-                if duplicate_found:
-                    logging.info(
-                        f"중복 발견으로 {report_type} 크롤링 중단. 페이지: {current_page}"
-                    )
-                    break  # 중복 발견 시 현재 타입의 크롤링 중단
-
                 # URL 변경 및 페이지 이동
                 if current_page > 1:
                     next_page_url = f"{base_url}&page={current_page}"
@@ -291,19 +206,15 @@ def crawl_pdfs():
                 # 데이터 추출
                 report_data_list = extract_report_data(driver, report_type)
 
-                # 중복 확인 로직
+                # 중복 확인 및 저장
                 for data in report_data_list:
                     report_id = data.get("report_id")
-                    if is_duplicate(report_id):
+                    if is_duplicate(report_id):  # 중복 확인
                         logging.warning(f"중복된 report_id 발견: {report_id}")
-                        duplicate_found = True
-                        break  # 중복 발생 시 다음 페이지 크롤링 중단
-
-                if not duplicate_found:
-                    save_to_database(report_data_list, "reports")
-
-            if duplicate_found and report_type == "Industry":
-                break  # 산업 분석에서도 중복 발생 시 전체 크롤링 종료
+                        # 중복 발견 시 현재 타입의 크롤링 중단
+                        return  # report_type 전체 종료
+                    else:
+                        save_to_database([data], "reports")  # 개별 데이터 저장
 
     driver.quit()
 
