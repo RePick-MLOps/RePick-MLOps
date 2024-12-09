@@ -86,7 +86,6 @@ pipeline {
                     sh '''
                         export DISPLAY=:99
                         export PYTHONPATH="${WORKSPACE}"
-                        python3 -m src.data_collection.crawling
 
                         echo "=== Starting Daily Crawling ==="
                         export PYTHONPATH="${WORKSPACE}"
