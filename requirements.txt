@@ -38,3 +38,4 @@ rank_bm25
 click>=7.0
 psutil
 h11>=0.14.0
+langchain-core>=0.1.0
