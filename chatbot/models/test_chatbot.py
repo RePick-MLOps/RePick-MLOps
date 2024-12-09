@@ -234,22 +234,48 @@ def create_chain(retriever):
 
 
 def initialize_retrievers(vectorstore):
-    # Chroma 리트리버 초기화
+    # Chroma 리트리버 초기화 - k값과 score_threshold 조정
     chroma_retriever = vectorstore.as_retriever(
-        search_type="similarity", search_kwargs={"k": 5}
+        search_type="mmr",  # MMR로 변경하여 다양성과 관련성 균형
+        search_kwargs={
+            "k": 8,  # 검색 문서 수 증가
+            "fetch_k": 20,  # MMR 후보군 증가
+            "lambda_mult": 0.7  # 관련성과 다양성의 균형
+        }
     )
 
-    # BM25 리트버 초기화 (Chroma에서 문서 가져오기)
-    documents = vectorstore.get()  # Chroma에서 모든 문서 가져오기
-    bm25_retriever = BM25Retriever.from_documents(documents)
-    bm25_retriever.k = 5
+    try:
+        # Chroma에서 모든 문서를 가져오는 올바른 방법
+        collection = vectorstore._collection
+        result = collection.get()
+        
+        documents = []
+        for i in range(len(result['documents'])):
+            doc = result['documents'][i]
+            metadata = result['metadatas'][i] if result['metadatas'] else {}
+            # 문서 내용이 너무 짧은 경우 제외
+            if len(str(doc).strip()) > 50:  
+                documents.append(Document(page_content=doc, metadata=metadata))
 
-    # 앙상블 리트리버 초기화
-    ensemble_retriever = EnsembleRetriever(
-        retrievers=[chroma_retriever, bm25_retriever], weights=[0.7, 0.3]
-    )
+        if documents:
+            bm25_retriever = BM25Retriever.from_documents(documents)
+            bm25_retriever.k = 8  # BM25도 동일하게 k값 증가
 
-    return ensemble_retriever
+            # 앙상블 리트리버의 가중치 조정
+            ensemble_retriever = EnsembleRetriever(
+                retrievers=[chroma_retriever, bm25_retriever], 
+                weights=[0.8, 0.2]  # 벡터 검색에 더 높은 가중치
+            )
+            logger.info("앙상블 리트리버 초기화 성공")
+            return ensemble_retriever
+        else:
+            logger.warning("문서가 없어 Chroma 리트리버만 사용")
+            return chroma_retriever
+
+    except Exception as e:
+        logger.error(f"BM25 리트리버 초기화 실패: {str(e)}")
+        logger.info("Chroma 리트리버만 사용")
+        return chroma_retriever
 
 
 def clean_retrieved_documents(retrieved_documents):
@@ -296,11 +322,9 @@ def retrieve_and_check(question, ensemble_retriever):
 
 def test_chatbot():
     vectorstore = load_vectorstore()
-    retriever = vectorstore.as_retriever(
-        search_type="similarity",
-        search_kwargs={"k": 4},
-        collection_name="pdf_collection",
-    )
+    # 앙상블 리트리버 사용
+    retriever = initialize_retrievers(vectorstore)
 
+    # k값 증가 및 search_type 다양화
     qa_chain = create_chain(retriever)
     return qa_chain
