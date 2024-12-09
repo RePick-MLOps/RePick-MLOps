@@ -211,10 +211,16 @@ def crawl_pdfs():
                     report_id = data.get("report_id")
                     if is_duplicate(report_id):  # 중복 확인
                         logging.warning(f"중복된 report_id 발견: {report_id}")
-                        # 중복 발견 시 현재 타입의 크롤링 중단
-                        return  # report_type 전체 종료
+                        # 중복 발견 시 현재 `report_type` 루프 종료
+                        break
                     else:
                         save_to_database([data], "reports")  # 개별 데이터 저장
+
+                else:
+                    # `for data in report_data_list`가 break 없이 끝난 경우 다음 페이지로 이동
+                    continue
+
+                break
 
     driver.quit()
 
