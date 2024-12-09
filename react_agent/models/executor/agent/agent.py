@@ -1,5 +1,10 @@
 import os
 import sys
+import subprocess
+import logging
+
+# 로깅 설정
+logger = logging.getLogger(__name__)
 
 # 프로젝트 루트 디렉토리를 Python 경로에 추가
 sys.path.append(
@@ -9,36 +14,36 @@ sys.path.append(
 )
 
 from react_agent.models.llm import llm_model
-from react_agent.prompts import prompt_template
 from react_agent.tools import tool_list
 from langchain.agents import create_react_agent
+from langchain_openai import ChatOpenAI
+from react_agent.prompts.template import prompt_template
 
 
 def react_agent(db_path: str):
     """
     ReAct 에이전트를 생성하는 함수
     """
-    llm = llm_model()
-    tools = tool_list(db_path)
-    tool_names = [tool.name for tool in tools]
-    chat_history = ""  # 초기 대화 기록 설정
-    agent_scratchpad = ""  # 초기 에이전트 스크래치패드 설정
-    input_text = ""  # 초기 입력 설정
+    try:
+        # LLM 모델 초기화
+        llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0, streaming=True)
+        logger.info("LLM 모델 초기화 완료")
 
-    # tools를 문자열로 변환
-    tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
+        # 도구 목록 가져오기
+        tools = tool_list(db_path)
+        tool_names = [tool.name for tool in tools]
+        logger.info(f"도구 목록 로드 완료: {tool_names}")
 
-    prompt = prompt_template().format(
-        tools=tools_str,
-        tool_names=", ".join(tool_names),  # tool_names를 문자열로 변환
-        chat_history=chat_history,
-        agent_scratchpad=agent_scratchpad,
-        input=input_text
-    )
+        # 프롬프트 템플릿 생성
+        prompt = prompt_template()
+        logger.info("프롬프트 템플릿 생성 완료")
 
-    # create_react_agent 함수를 사용하여 에이전트 생성
-    return create_react_agent(
-        llm=llm,
-        tools=tools,
-        prompt=prompt
-    )
+        # ReAct 에이전트 생성
+        agent = create_react_agent(llm=llm, tools=tools, prompt=prompt)
+        logger.info("에이전트 생성 완료")
+
+        return agent
+
+    except Exception as e:
+        logger.error(f"에이전트 생성 중 오류 발생: {str(e)}")
+        raise

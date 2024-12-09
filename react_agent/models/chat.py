@@ -1,4 +1,4 @@
-from executor import agent_executor
+from models.executor.executor import agent_executor
 from langchain.callbacks.base import BaseCallbackHandler
 from typing import Dict, Any
 
@@ -18,29 +18,3 @@ class MaxIterationCallbackHandler(BaseCallbackHandler):
             raise ValueError(
                 f"최대 반복 횟수({self.max_iterations})를 초과했습니다. 현재 정보로 답변을 생성합니다."
             )
-
-
-def test_chat():
-    """에이전트와의 대화를 테스트하는 함수"""
-    db_path = r"/Users/jeonghyeran/Desktop/RePick-MLOps/data/vectordb"
-
-    # 최대 2번의 도구 사용만 허용
-    callback = MaxIterationCallbackHandler(max_iterations=2)
-
-    try:
-        response = agent_executor(db_path=db_path).invoke(
-            {
-                "input": "롯데쇼핑의 ESG 점수를 전체 평균이 어떻게 되어 있나요?",
-                "chat_history": [],
-            },
-            callbacks=[callback],
-        )
-        print("\n최종 응답:", response)
-
-    except ValueError as e:
-        print("\n경고:", str(e))
-        print("현재까지 수집된 정보로 답변을 생성합니다.")
-
-
-if __name__ == "__main__":
-    test_chat()

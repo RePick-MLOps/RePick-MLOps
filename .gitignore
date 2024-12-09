@@ -11,6 +11,7 @@ env/
 venv/
 
 # Data set
+data_backup/*
 data/*
 data/pdf/*
 data/vectordb/*
