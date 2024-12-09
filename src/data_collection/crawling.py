@@ -274,25 +274,10 @@ def crawl_pdfs():
             navigate_industry_report_page,
             "https://finance.naver.com/research/industry_list.naver?",
         ),
-        (
-            "Company",
-            navigate_company_report_page,
-            "https://finance.naver.com/research/company_list.naver?",
-        ),
-        (
-            "Industry",
-            navigate_industry_report_page,
-            "https://finance.naver.com/research/industry_list.naver?",
-        ),
     ]:
         if navigate_func(driver):
             for current_page in range(1, 11):  # max_pages=10
                 if duplicate_found:
-                    logging.info(
-                        f"중복 발견으로 {report_type} 크롤링 중단. 페이지: {current_page}"
-                    )
-                    break  # 중복 발견 시 현재 타입의 크롤링 중단
-
                     logging.info(
                         f"중복 발견으로 {report_type} 크롤링 중단. 페이지: {current_page}"
                     )
@@ -306,13 +291,10 @@ def crawl_pdfs():
                 # 데이터 추출
                 report_data_list = extract_report_data(driver, report_type)
 
-                # 데이터 추출
-                report_data_list = extract_report_data(driver, report_type)
-
                 # 중복 확인 로직
                 for data in report_data_list:
                     report_id = data.get("report_id")
-                    if is_duplicate(report_id):  # 중복 확인 함수 호출
+                    if is_duplicate(report_id):
                         logging.warning(f"중복된 report_id 발견: {report_id}")
                         duplicate_found = True
                         break  # 중복 발생 시 다음 페이지 크롤링 중단

@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -U pip wheel setuptools
 
 # 핵심 패키지 먼저 설치
 RUN pip install --no-cache-dir \
-    numpy==2.1.3 \
+    numpy==1.26.2 \
     pandas>=2.2.2 \
     sympy==1.13.3 \
     tenacity==8.3.0

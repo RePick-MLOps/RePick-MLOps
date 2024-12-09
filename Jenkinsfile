@@ -86,7 +86,6 @@ pipeline {
                     sh '''
                         export DISPLAY=:99
                         export PYTHONPATH="${WORKSPACE}"
-                        python3 -m src.data_collection.crawling
 
                         echo "=== Starting Daily Crawling ==="
                         export PYTHONPATH="${WORKSPACE}"
@@ -404,12 +403,13 @@ pipeline {
                         
                         # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
                         aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
-                            --exclude "*" \
                             --include "*.sqlite3" \
                             --include "*.json" \
                             --include "*.bin" \
                             --include "*.pkl" \
-                            --include "index/*"
+                            --include "index/*" \
+                            --exclude "*" \
+                            --size-only
                         
                         # 업로드 확인
                         echo "=== S3 업로드된 파일 목록 ==="
