@@ -403,12 +403,12 @@ pipeline {
                         
                         # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
                         aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
+                            --exclude "*" \
                             --include "*.sqlite3" \
                             --include "*.json" \
                             --include "*.bin" \
                             --include "*.pkl" \
                             --include "index/*" \
-                            --exclude "*" \
                             --size-only
                         
                         # 업로드 확인
@@ -517,7 +517,7 @@ pipeline {
                 channel: '#jenkins',
                 color: 'danger',
                 message: """
-                    :x: 파이프라인 실행 실패
+                    :x: 파��프라인 실행 실패
                     - 작업: ${env.JOB_NAME}
                     - 빌드 번호: ${env.BUILD_NUMBER}
                     - 상세 정보: ${env.BUILD_URL}
