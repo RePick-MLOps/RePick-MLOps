@@ -11,6 +11,7 @@ pypdf>=4.2.0
 pdfplumber>=0.11.1
 pdfminer-six>=20231228
 fastapi>=0.110.0
+starlette>=0.36.3
 uvicorn[standard]>=0.27.1
 requests>=2.31.0
 huggingface-hub>=0.23
