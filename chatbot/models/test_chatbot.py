@@ -96,8 +96,48 @@ def save_to_s3():
     """ChromaDB 데이터를 S3에 업로드"""
     try:
         local_db_path = "data/vectordb"
-        os.system(f"aws s3 sync {local_db_path} s3://repick-chromadb/vectordb")
-        logger.info("ChromaDB 데이터를 S3에 성공적으로 업로드했습니다.")
+
+        # 현재 파일 상태 확인
+        logger.info("=== 로컬 파일 상태 ===")
+        ls_result = subprocess.run(
+            f"ls -lh {local_db_path}", shell=True, capture_output=True, text=True
+        )
+        logger.info(ls_result.stdout)
+
+        # S3 업로드 전 상태 확인
+        logger.info("=== S3 업로드 전 상태 ===")
+        s3_ls_result = subprocess.run(
+            "aws s3 ls s3://repick-chromadb/vectordb/ --recursive",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        logger.info(s3_ls_result.stdout)
+
+        # 동기화 명령 실행
+        sync_command = (
+            f"aws s3 sync {local_db_path} s3://repick-chromadb/vectordb --delete"
+        )
+        logger.info(f"실행 명령어: {sync_command}")
+
+        result = subprocess.run(
+            sync_command, shell=True, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            logger.info("S3 업로드 성공")
+        else:
+            logger.error(f"S3 업로드 실패: {result.stderr}")
+
+        # 업로드 후 S3 상태 확인
+        logger.info("=== S3 업로드 후 상태 ===")
+        s3_final_result = subprocess.run(
+            "aws s3 ls s3://repick-chromadb/vectordb/ --recursive",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        logger.info(s3_final_result.stdout)
+
     except Exception as e:
         logger.error(f"S3 업로드 실패: {str(e)}")
         raise
