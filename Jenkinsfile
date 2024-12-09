@@ -286,11 +286,33 @@ pipeline {
         stage('Download Existing VectorDB') {
             steps {
                 sh '''
-                    # S3에서 기존 VectorDB 다운로드
-                    aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/
+                    echo "=== S3에서 VectorDB 다운로드 시작 ==="
                     
-                    echo "=== 다운로드된 VectorDB 내용 ==="
+                    # 디렉토리 존재 확인 및 생성
+                    mkdir -p data/vectordb
+                    
+                    # S3 버킷 내용물 확인
+                    echo "=== S3 버킷 내용 확인 ==="
+                    aws s3 ls s3://repick-chromadb/vectordb/ --recursive
+                    
+                    # 파일 다운로드
+                    echo "=== VectorDB 파일 다운로드 ==="
+                    aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/ \
+                        --exclude "*" \
+                        --include "*.sqlite3" \
+                        --include "*.json" \
+                        --include "*.bin" \
+                        --include "*.pkl" \
+                        --include "index/*"
+                    
+                    # 다운로드 결과 확인
+                    echo "=== 다운로드된 파일 확인 ==="
                     ls -la data/vectordb/
+                    
+                    if [ ! -f "data/vectordb/chroma.sqlite3" ]; then
+                        echo "경고: chroma.sqlite3 파일이 없습니다!"
+                        exit 1
+                    fi
                 '''
             }
         }
