@@ -360,7 +360,7 @@ pipeline {
                         
                         # ChromaDB 컬렉션 상태 확인
                         echo "=== ChromaDB 처리 전 상태 확인 ==="
-                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('repick_docs'); print(f'현재 문서 수: {collection.count()}')"
+                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'현재 문서 수: {collection.count()}')"
                         
                         # PDF 처리 및 ChromaDB 업데이트
                         echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
@@ -373,7 +373,7 @@ pipeline {
                         
                         # ChromaDB 컬렉션 상태 재확인
                         echo "=== ChromaDB 처리 후 상태 확인 ==="
-                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('repick_docs'); print(f'처리 후 문서 수: {collection.count()}')"
+                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'처리 후 문서 수: {collection.count()}')"
                         
                         # 상태 확인
                         if [ -f "data/vectordb/processed_states.json" ]; then
