@@ -2,9 +2,9 @@ from react_agent.tools.news_tool.news_search import news_search_tool
 from react_agent.tools.retriever_tool.retriever_tool import retriever_tool
 from react_agent.tools.python_executor.python_executor import create_python_executor, execute_python_code
 from typing import List
-from langchain_community.tools import BaseTool
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
+from langchain.tools import BaseTool
 
 # .env 파일 로드
 load_dotenv()

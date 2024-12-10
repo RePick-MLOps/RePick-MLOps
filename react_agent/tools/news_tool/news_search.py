@@ -26,3 +26,27 @@ def news_search_tool():
         "주의: retrieve_tool에서 정보를 찾지 못한 경우 이 도구를 사용하지 말고 즉시 정보 없음으로 답변"
     )
     return news_search_tool
+
+if __name__ == "__main__":
+    # 뉴스 검색 도구 인스턴스 생성
+    search_tool = news_search_tool()
+    
+    # 테스트할 검색어
+    test_query = "삼성전자 실적"
+    
+    # 검색 실행 및 결과 출력
+    try:
+        results = search_tool.invoke(test_query)
+        print(f"검색어: {test_query}")
+        print("\n검색 결과:")
+        for result in results:
+            print(f"\n제목: {result.get('title', 'No title')}")
+            print(f"내용: {result.get('content', 'No content')}")
+            print(f"링크: {result.get('url', 'No URL')}")
+            print(f"출처: {result.get('source', 'No source')}")
+            print(f"게시일: {result.get('published_date', 'No date')}")
+    except Exception as e:
+        print(f"오류 발생: {str(e)}")
+        # 디버깅을 위한 전체 결과 출력
+        print("\n전체 결과 구조:")
+        print(results)

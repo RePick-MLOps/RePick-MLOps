@@ -10,7 +10,7 @@ def test_chat():
         
         # 테스트 질문
         test_input = {
-            "input": "롯데쇼핑의 ESG 점수를 전체 평균이 어떻게 되어 있나요?",
+            "input": "삼성전자 전망에 대해서 설명해줘?",
             "chat_history": [],
         }
         

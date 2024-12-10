@@ -11,6 +11,8 @@ sys.path.append(
 from langchain.agents import AgentExecutor
 from react_agent.models.executor.agent import get_agent
 from react_agent.tools import tool_list  # 도구 목록 직접 가져오기
+from langsmith import Client
+from langchain.callbacks.tracers import LangChainTracer
 
 def agent_executor(db_path: str) -> AgentExecutor:
     """
@@ -23,6 +25,11 @@ def agent_executor(db_path: str) -> AgentExecutor:
         AgentExecutor: 생성된 에이전트 실행기
     """
     try:
+        # LangSmith 설정
+        tracer = LangChainTracer(
+            project_name="final_project"
+        )
+        
         # 에이전트 생성
         agent = get_agent(db_path)
         
@@ -35,7 +42,8 @@ def agent_executor(db_path: str) -> AgentExecutor:
             tools=tools,
             verbose=True,
             handle_parsing_errors=True,
-            max_iterations=10
+            max_iterations=10,
+            callbacks=[tracer]
         )
         
         return agent_executor

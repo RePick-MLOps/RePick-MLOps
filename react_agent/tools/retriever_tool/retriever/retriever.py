@@ -11,7 +11,7 @@ class DocumentRetriever:
         self,
         db_path: str,
         collection_name: str = "pdf_collection",
-        k: int = 3,
+        k: int = 5,
         score_threshold: float = 0.5,
         vector_weight: float = 0.6,
         bm25_weight: float = 0.4,
@@ -70,7 +70,10 @@ class DocumentRetriever:
         if self._retriever is None:  # 검색기가 아직 초기화되지 않았다면
             db = self.vector_store.get_db()  # 벡터 DB 가져오기
             # 검색기를 설정 (k 값 사용)
-            self._retriever = db.as_retriever(search_kwargs={"k": self.k * 2})
+            self._retriever = db.as_retriever(
+                search_type="mmr",
+                search_kwargs={"k": self.k}
+            )
         return self._retriever
     @property
     def bm25_retriever(self):
