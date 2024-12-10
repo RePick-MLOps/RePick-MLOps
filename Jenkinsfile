@@ -403,6 +403,9 @@ pipeline {
                         
                         # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
                         aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
+                            --exclude "*.gitkeep" \
+                            --exclude "*.bak" \
+                            --exclude "*_backup*" \
                             --include "*.sqlite3" \
                             --include "*.json" \
                             --include "*.bin" \
