@@ -41,3 +41,4 @@ matplotlib
 rank_bm25
 click>=7.0
 psutil
+pytz==2024.1

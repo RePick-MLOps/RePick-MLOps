@@ -17,7 +17,7 @@ pipeline {
     }
 
     triggers {
-        cron('0 22 * * *')
+        cron('0 13 * * *')
     }
 
     stages {
@@ -106,11 +106,8 @@ pipeline {
         stage('System Cleanup') {
             steps {
                 sh '''
-                    # 시스템 캐시 정리
-                    sync
-                    
-                    # Jenkins 작업 디렉토리 정리
-                    rm -rf ${WORKSPACE}/*
+                    # 중요 디렉토리 제외하고 작업 공간 정리
+                    find ${WORKSPACE} -mindepth 1 -maxdepth 1 ! -name 'data' -exec rm -rf {} +
                     
                     echo "=== Docker Cleanup ==="
                     
@@ -376,8 +373,10 @@ pipeline {
                         
                         # 상태 확인
                         if [ -f "data/vectordb/processed_states.json" ]; then
-                            echo "처리된 PDF 상태:"
-                            cat data/vectordb/processed_states.json
+                            echo "=== processed_states.json 상태 ==="
+                            echo "파일 크기: $(ls -lh data/vectordb/processed_states.json | awk '{print $5}')"
+                            echo "수정 시간: $(ls -l data/vectordb/processed_states.json | awk '{print $6, $7, $8}')"
+                            echo "처리된 파일 수: $(jq 'length' data/vectordb/processed_states.json)"
                         fi
                     '''
                 }
@@ -403,6 +402,9 @@ pipeline {
                         
                         # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
                         aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
+                            --exclude "*.gitkeep" \
+                            --exclude "*.bak" \
+                            --exclude "*_backup*" \
                             --include "*.sqlite3" \
                             --include "*.json" \
                             --include "*.bin" \
@@ -478,6 +480,16 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Set Permissions') {
+            steps {
+                sh '''
+                    # Jenkins 사용자로 실행되므로 sudo 필요 없음
+                    chown -R $(whoami):$(whoami) ${WORKSPACE}/data
+                    chmod -R 755 ${WORKSPACE}/data
+                '''
+            }
+        }
     }
     
     post {
@@ -516,7 +528,7 @@ pipeline {
                 channel: '#jenkins',
                 color: 'danger',
                 message: """
-                    :x: 파��프라인 실행 실패
+                    :x: 파이프라인 실행 실패
                     - 작업: ${env.JOB_NAME}
                     - 빌드 번호: ${env.BUILD_NUMBER}
                     - 상세 정보: ${env.BUILD_URL}
