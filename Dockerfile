@@ -56,9 +56,9 @@ COPY scripts ./scripts
 
 # 시작 스크립트 생성
 RUN echo '#!/bin/bash\n\
-    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/vectordb.tar.gz /tmp/vectordb.tar.gz && \
-    tar -xzf /tmp/vectordb.tar.gz -C /data/vectordb && \
-    rm /tmp/vectordb.tar.gz && \
+    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/chroma.sqlite3 /data/vectordb/chroma.sqlite3 && \
+    aws s3 cp s3://${AWS_S3_BUCKET}/vectordb/processed_states.json /data/vectordb/processed_states.json && \
+    aws s3 sync s3://${AWS_S3_BUCKET}/vectordb/1f26f51e-36f9-4e30-8c57-8247d2fc0427/ /data/vectordb/1f26f51e-36f9-4e30-8c57-8247d2fc0427/ && \
     python -m app.api.test_chatbot_api' > /app/start.sh && \
     chmod +x /app/start.sh
 
