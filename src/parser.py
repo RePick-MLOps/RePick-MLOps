@@ -130,8 +130,7 @@ def process_single_pdf(filepath="data/pdf/20241122_company_22650000.pdf"):
         error_message = str(e)
         print(f"PDF 처리 중 오류 발생: {error_message}")
 
-
-def create_chatbot(state, persist_directory: str = "vectorstore"):
+    # def create_chatbot(state, persist_directory: str = "vectorstore"):
     """
     처리된 PDF 상태로부터 챗봇을 생성합니다.
 
