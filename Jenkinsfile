@@ -14,6 +14,11 @@ pipeline {
             choices: ['all','crawling-only', 'pdf-only', 'docker-only', 'ec2-only'],
             description: '업데이트 유형을 선택하세요'
         )
+        string(
+            name: 'PDF_PROCESS_LIMIT',
+            defaultValue: '10',
+            description: '한 번에 처리할 PDF 파일의 최대 개수'
+        )
     }
 
     triggers {
@@ -493,18 +498,20 @@ pipeline {
     
     post {
         always {
-            cleanWs() // 작업 공간 정리
+            cleanWs()
             script {
                 try {
-                    slackSend( // Slack 알림
-                        channel: '#jenkins', 
-                        color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
-                        message: """
-                            *${currentBuild.currentResult}:* Job `${env.JOB_NAME}` build `${env.BUILD_NUMBER}`
-                            More info at: ${env.BUILD_URL}
-                        """,
-                        tokenCredentialId: 'slack-token'
-                    )
+                    withCredentials([string(credentialsId: 'slack-token', variable: 'SLACK_TOKEN')]) {
+                        slackSend(
+                            channel: '#jenkins',
+                            color: currentBuild.currentResult == 'SUCCESS' ? 'good' : 'danger',
+                            message: """
+                                *${currentBuild.currentResult}:* Job `${env.JOB_NAME}` build `${env.BUILD_NUMBER}`
+                                More info at: ${env.BUILD_URL}
+                            """,
+                            tokenCredentialId: SLACK_TOKEN
+                        )
+                    }
                 } catch (Exception e) {
                     echo "Slack 알림 전송 실패: ${e.message}"
                 }
