@@ -128,7 +128,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관련 모든 리소스 ���리
+                    # buildx 관련 모든 리소스 정리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
@@ -393,9 +393,7 @@ pipeline {
                 }
             }
             steps {
-                withCredentials([
-                    string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')
-                ]) {
+                withCredentials([string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')]) {
                     sh '''
                         echo "=== S3 업로드 시작 ==="
                         
@@ -408,7 +406,7 @@ pipeline {
                             --exclude "*.gitkeep" \
                             --exclude "*.bak" \
                             --exclude "*_backup*" \
-                            --include chroma.sqlite3sqlite3" \
+                            --include "chroma.sqlite3" \
                             --include "processed_states.json" \
                             --include "index/*" \
                             --exact-timestamps
