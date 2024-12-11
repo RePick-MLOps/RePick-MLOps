@@ -128,7 +128,7 @@ pipeline {
                     docker builder prune -f --all
                     docker system prune -af --volumes
                     
-                    # buildx 관련 모든 리소스 정리
+                    # buildx 관련 모든 리소스 ���리
                     echo "=== Buildx Cleanup ==="
                     # 현재 buildx 상태 확인
                     docker buildx ls
@@ -349,6 +349,9 @@ pipeline {
                     string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
                 ]) {
                     sh '''
+                        # jq 설치
+                        sudo apt-get update && sudo apt-get install -y jq   
+                        
                         # PDF 처리 전 ChromaDB 상태 확인
                         echo "=== PDF 처리 전 ChromaDB 상태 ==="
                         ls -lh data/vectordb/chroma.sqlite3
@@ -405,10 +408,8 @@ pipeline {
                             --exclude "*.gitkeep" \
                             --exclude "*.bak" \
                             --exclude "*_backup*" \
-                            --include "*.sqlite3" \
-                            --include "*.json" \
-                            --include "*.bin" \
-                            --include "*.pkl" \
+                            --include chroma.sqlite3sqlite3" \
+                            --include "processed_states.json" \
                             --include "index/*" \
                             --exact-timestamps
                         
