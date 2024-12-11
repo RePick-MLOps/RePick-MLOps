@@ -139,4 +139,4 @@ class MongoDBHandler:
 
 if __name__ == "__main__":
     with MongoDBHandler() as handler:
-        handler.download_pdf(limit=5)  # limit(10)개의 문서만 처리
+        handler.download_pdf(limit=1000)  # limit(10)개의 문서만 처리

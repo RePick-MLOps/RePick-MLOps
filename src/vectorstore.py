@@ -13,12 +13,18 @@ from langchain_chroma import Chroma
 
 
 class VectorStore:
-    def __init__(self, persist_directory: str, model_name="jhgan/ko-sbert-sts"):
+    def __init__(
+        self,
+        persist_directory: str,
+        collection_name: str = "pdf_collection",
+        model_name: str = "jhgan/ko-sbert-sts",
+    ):
         """
         벡터스토어 초기화
 
         Args:
             persist_directory (str): 벡터스토어를 저장할 디렉토리 경로
+            collection_name (str): 사용할 컬렉션 이름 (기본값: "pdf_collection")
             model_name (str): HuggingFace 임베딩 모델 이름
         """
         # .env 파일 로드

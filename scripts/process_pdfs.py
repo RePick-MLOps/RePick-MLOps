@@ -4,12 +4,13 @@ import time
 import os
 import logging
 import psutil
+import argparse
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 from pathlib import Path
 from dotenv import load_dotenv
-from src.vectorstore import VectorStore, process_pdf_directory
+from src.vectorstore import VectorStore
 from src.parser import process_single_pdf
 from src.graphparser.state import GraphState
 from tenacity import (
@@ -18,6 +19,7 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
 )
+from langchain.schema import Document
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -87,7 +89,6 @@ def process_single_pdf(pdf_path):
                 "text_summary",
                 "image_summary",
                 "table_summary",
-                "page_summary",
             ]
             missing_keys = [key for key in required_keys if key not in state]
             if missing_keys:
@@ -108,7 +109,6 @@ def process_single_pdf(pdf_path):
                 "image_summary": {},
                 "table_summary": {},
                 "table_markdown": {},
-                "page_summary": {},
             }
 
     except Exception as e:
@@ -116,8 +116,12 @@ def process_single_pdf(pdf_path):
         return None
 
 
-def process_new_pdfs():
-    """새로운 PDF 파일들을 처리하고 상태를 저장합니다."""
+def process_new_pdfs(limit: int = None):
+    """새로운 PDF 파일들을 처리하고 상태를 저장합니다.
+
+    Args:
+        limit (int, optional): 처리할 PDF 파일의 최대 개수. 기본값은 None으로 모든 파일 처리
+    """
     pdf_directory = "./data/pdf"
     processed_states_path = Path("./data/vectordb/processed_states.json")
     processed_states = load_processed_states()
@@ -125,12 +129,17 @@ def process_new_pdfs():
     # 디버깅: 기존 상태 출력
     print("\n=== 기존 처리 상태 ===")
     print(f"처리된 파일 수: {len(processed_states)}")
-    print(f"처리된 파일 목록: {list(processed_states.keys())}")
+    # print(f"처리된 파일 목록: {list(processed_states.keys())}")
 
     # 새로운 원본 PDF 파일만 필터링
     pdf_files = [
         f for f in os.listdir(pdf_directory) if is_original_pdf(f, processed_states)
     ]
+
+    # limit이 지정된 경우 처리할 파일 수 제한
+    if limit is not None:
+        pdf_files = pdf_files[:limit]
+        logger.info(f"처리할 PDF 파일을 {limit}개로 제한합니다.")
 
     logger.info(f"\n=== 새로운 PDF 파일 정보 ===")
     logger.info(f"처리할 새로운 PDF 파일: {len(pdf_files)}개")
@@ -162,7 +171,6 @@ def process_new_pdfs():
                     "image_summary": state.get("image_summary", {}),
                     "table_summary": state.get("table_summary", {}),
                     "table_markdown": state.get("table_markdown", {}),
-                    "page_summary": state.get("page_summary", {}),
                     "parsing_processed": True,
                     "vectorstore_processed": True,
                 }
@@ -183,7 +191,17 @@ def process_new_pdfs():
                 logger.info(f"이미지 요약 수: {len(state_dict['image_summary'])}")
                 logger.info(f"테이블 요약 수: {len(state_dict['table_summary'])}")
                 logger.info(f"테이블 마크다운 수: {len(state_dict['table_markdown'])}")
-                logger.info(f"페이지 요약 수: {len(state_dict['page_summary'])}")
+
+                # 텍스트 요약 저장
+                vector_store.add_documents(
+                    documents=[
+                        Document(
+                            page_content=text,
+                            metadata={"source": pdf_file, "type": "text_summary"},
+                        )
+                        for text in state.get("text_summary", {}).values()
+                    ]
+                )
 
                 # 상태 저장
                 with open(processed_states_path, "w", encoding="utf-8") as f:
@@ -196,4 +214,8 @@ def process_new_pdfs():
 
 
 if __name__ == "__main__":
-    process_new_pdfs()
+    parser = argparse.ArgumentParser(description="PDF 파일 처리 스크립트")
+    parser.add_argument("--limit", type=int, help="처리할 PDF 파일 최대 개수")
+    args = parser.parse_args()
+
+    process_new_pdfs(limit=args.limit)

@@ -240,21 +240,21 @@ def initialize_retrievers(vectorstore):
         search_kwargs={
             "k": 8,  # 검색 문서 수 증가
             "fetch_k": 20,  # MMR 후보군 증가
-            "lambda_mult": 0.7  # 관련성과 다양성의 균형
-        }
+            "lambda_mult": 0.7,  # 관련성과 다양성의 균형
+        },
     )
 
     try:
         # Chroma에서 모든 문서를 가져오는 올바른 방법
         collection = vectorstore._collection
         result = collection.get()
-        
+
         documents = []
-        for i in range(len(result['documents'])):
-            doc = result['documents'][i]
-            metadata = result['metadatas'][i] if result['metadatas'] else {}
+        for i in range(len(result["documents"])):
+            doc = result["documents"][i]
+            metadata = result["metadatas"][i] if result["metadatas"] else {}
             # 문서 내용이 너무 짧은 경우 제외
-            if len(str(doc).strip()) > 50:  
+            if len(str(doc).strip()) > 50:
                 documents.append(Document(page_content=doc, metadata=metadata))
 
         if documents:
@@ -263,8 +263,8 @@ def initialize_retrievers(vectorstore):
 
             # 앙상블 리트리버의 가중치 조정
             ensemble_retriever = EnsembleRetriever(
-                retrievers=[chroma_retriever, bm25_retriever], 
-                weights=[0.8, 0.2]  # 벡터 검색에 더 높은 가중치
+                retrievers=[chroma_retriever, bm25_retriever],
+                weights=[0.8, 0.2],  # 벡터 검색에 더 높은 가중치
             )
             logger.info("앙상블 리트리버 초기화 성공")
             return ensemble_retriever
@@ -294,12 +294,12 @@ def clean_retrieved_documents(retrieved_documents):
             # content가 dict인 경우 문자열로 변환
             content = str(content)
 
-        if metadata.get("type") in ["page_summary", "text"]:
+        if metadata.get("type") == "text":
             if "page" in metadata:
                 new_metadata["page"] = metadata["page"]
             if "source" in metadata:
                 new_metadata["source"] = metadata["source"]
-            if metadata.get("type") == "text" and "summary" in metadata:
+            if "summary" in metadata:
                 new_metadata["summary"] = metadata["summary"]
             clean_docs.append(Document(page_content=content, metadata=new_metadata))
 
