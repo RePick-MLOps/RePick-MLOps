@@ -152,7 +152,7 @@ def create_prompt():
 
 
 def create_chain(retriever):
-    llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
 
     def retrieve_and_format(question: str) -> str:
         try:
