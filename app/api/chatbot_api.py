@@ -9,7 +9,7 @@ sys.path.append(
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import logging
-from chatbot.models.test_chatbot import test_chatbot
+from chatbot.models.chatbot import chatbot
 
 # 로거 설정
 logging.basicConfig(
@@ -17,7 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="RePick Chatbot Test API")
+app = FastAPI(title="RePick Chatbot API")
 
 
 # Pydantic 모델 정의
@@ -30,7 +30,7 @@ class ChatResponse(BaseModel):
 
 
 # QA Chain 초기화
-qa_chain = test_chatbot()
+qa_chain = chatbot()
 
 
 @app.post("/api/v1/chat/sendMessage", response_model=ChatResponse)
@@ -53,4 +53,4 @@ async def ping():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app.api.test_chatbot_api:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app.api.chatbot_api:app", host="0.0.0.0", port=8000, reload=True)

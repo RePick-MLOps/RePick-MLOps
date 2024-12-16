@@ -152,7 +152,7 @@ def create_prompt():
 
 
 def create_chain(retriever):
-    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
+    llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
 
     def retrieve_and_format(question: str) -> str:
         try:
@@ -279,7 +279,7 @@ def retrieve_and_check(question, ensemble_retriever):
     return cleaned_documents
 
 
-def test_chatbot():
+def chatbot():
     vectorstore = load_vectorstore()
     # 앙상블 리트리버 사용
     retriever = initialize_retrievers(vectorstore)
