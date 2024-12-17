@@ -170,9 +170,6 @@ def create_chain(retriever):
                         f"- {doc.metadata['source']}, {doc.metadata['page']}쪽"
                     )
 
-            if sources:
-                context += "\n\n출처:\n" + "\n".join(sources)
-
             return context
 
         except Exception as e:
