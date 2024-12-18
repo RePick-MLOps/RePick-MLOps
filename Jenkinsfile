@@ -272,159 +272,159 @@ pipeline {
             }
         }
         
-        // stage('Setup Directories') {
-        //     steps {
-        //         sh '''
-        //             # 필요한 디렉토리 한 번에 생성
-        //             mkdir -p data/pdf data/vectordb
+        stage('Setup Directories') {
+            steps {
+                sh '''
+                    # 필요한 디렉토리 한 번에 생성
+                    mkdir -p data/pdf data/vectordb
                     
-        //             echo "=== 디렉토리 구조 확인 ==="
-        //             ls -la data/
-        //         '''
-        //     }
-        // }
+                    echo "=== 디렉토리 구조 확인 ==="
+                    ls -la data/
+                '''
+            }
+        }
         
-        // stage('Download Existing VectorDB') {
-        //     steps {
-        //         sh '''
-        //             echo "=== S3에서 VectorDB 다운로드 시작 ==="
+        stage('Download Existing VectorDB') {
+            steps {
+                sh '''
+                    echo "=== S3에서 VectorDB 다운로드 시작 ==="
                     
-        //             # 디렉토리 존재 확인 및 생성
-        //             mkdir -p data/vectordb
+                    # 디렉토리 존재 확인 및 생성
+                    mkdir -p data/vectordb
                     
-        //             # S3 버킷 내용물 확인
-        //             echo "=== S3 버킷 내용 확인 ==="
-        //             aws s3 ls s3://repick-chromadb/vectordb/ --recursive
+                    # S3 버킷 내용물 확인
+                    echo "=== S3 버킷 내용 확인 ==="
+                    aws s3 ls s3://repick-chromadb/vectordb/ --recursive
                     
-        //             # 파일 다운로드
-        //             echo "=== VectorDB 파일 다운로드 ==="
-        //             aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/ \
-        //                 --exclude "*" \
-        //                 --include "*.sqlite3" \
-        //                 --include "*.json" \
-        //                 --include "*.bin" \
-        //                 --include "*.pkl" \
-        //                 --include "index/*"
+                    # 파일 다운로드
+                    echo "=== VectorDB 파일 다운로드 ==="
+                    aws s3 sync s3://repick-chromadb/vectordb/ data/vectordb/ \
+                        --exclude "*" \
+                        --include "*.sqlite3" \
+                        --include "*.json" \
+                        --include "*.bin" \
+                        --include "*.pkl" \
+                        --include "index/*"
                     
-        //             # 다운로드 결과 확인
-        //             echo "=== 다운로드된 파일 확인 ==="
-        //             ls -la data/vectordb/
+                    # 다운로드 결과 확인
+                    echo "=== 다운로드된 파일 확인 ==="
+                    ls -la data/vectordb/
                     
-        //             if [ ! -f "data/vectordb/chroma.sqlite3" ]; then
-        //                 echo "경고: chroma.sqlite3 파일이 없습니다!"
-        //                 exit 1
-        //             fi
-        //         '''
-        //     }
-        // }
+                    if [ ! -f "data/vectordb/chroma.sqlite3" ]; then
+                        echo "경고: chroma.sqlite3 파일이 없습니다!"
+                        exit 1
+                    fi
+                '''
+            }
+        }
         
-        // stage('Download PDFs') {
-        //     when {
-        //         expression { 
-        //             return params.UPDATE_TYPE in ['all', 'pdf-only'] 
-        //         }
-        //     }
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
-        //             string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
-        //             string(credentialsId: 'db-user', variable: 'DB_USER'),
-        //             string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
-        //         ]) {
-        //             sh '''
-        //                 export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-        //                 echo "Running with environment:"
-        //                 echo "EC2_HOST=$EC2_HOST"
-        //                 echo "EC2_PORT=$EC2_PORT"
-        //                 echo "DB_USER=$DB_USER"
-        //                 /usr/bin/python3 src/utils/mongodb_utils.py
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('Download PDFs') {
+            when {
+                expression { 
+                    return params.UPDATE_TYPE in ['all', 'pdf-only'] 
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                    string(credentialsId: 'ec2-port', variable: 'EC2_PORT'),
+                    string(credentialsId: 'db-user', variable: 'DB_USER'),
+                    string(credentialsId: 'db-password', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+                        echo "Running with environment:"
+                        echo "EC2_HOST=$EC2_HOST"
+                        echo "EC2_PORT=$EC2_PORT"
+                        echo "DB_USER=$DB_USER"
+                        /usr/bin/python3 src/utils/mongodb_utils.py
+                    '''
+                }
+            }
+        }
         
-        // stage('Process PDFs') {
-        //     when {
-        //         expression { 
-        //             return params.UPDATE_TYPE in ['all', 'pdf-only']
-        //         }
-        //     }
-        //     steps {
-        //         withCredentials([
-        //             string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
-        //         ]) {
-        //             sh '''
-        //                 # jq 설치
-        //                 sudo apt-get update && sudo apt-get install -y jq   
+        stage('Process PDFs') {
+            when {
+                expression { 
+                    return params.UPDATE_TYPE in ['all', 'pdf-only']
+                }
+            }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'upstage-api-key', variable: 'UPSTAGE_API_KEY')
+                ]) {
+                    sh '''
+                        # jq 설치
+                        sudo apt-get update && sudo apt-get install -y jq   
                         
-        //                 # PDF 처리 전 ChromaDB 상태 확인
-        //                 echo "=== PDF 처리 전 ChromaDB 상태 ==="
-        //                 ls -lh data/vectordb/chroma.sqlite3
-        //                 md5sum data/vectordb/chroma.sqlite3
+                        # PDF 처리 전 ChromaDB 상태 확인
+                        echo "=== PDF 처리 전 ChromaDB 상태 ==="
+                        ls -lh data/vectordb/chroma.sqlite3
+                        md5sum data/vectordb/chroma.sqlite3
                         
-        //                 # ChromaDB 컬렉션 상태 확인
-        //                 echo "=== ChromaDB 처리 전 상태 확인 ==="
-        //                 python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'현재 문서 수: {collection.count()}')"
+                        # ChromaDB 컬렉션 상태 확인
+                        echo "=== ChromaDB 처리 전 상태 확인 ==="
+                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'현재 문서 수: {collection.count()}')"
                         
-        //                 # PDF 처리 및 ChromaDB 업데이트
-        //                 echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
-        //                 python3 scripts/process_pdfs.py --append_mode
+                        # PDF 처리 및 ChromaDB 업데이트
+                        echo "UPSTAGE_API_KEY: $UPSTAGE_API_KEY"
+                        python3 scripts/process_pdfs.py --append_mode
                         
-        //                 # PDF 처리 후 ChromaDB 상태 확인
-        //                 echo "=== PDF 처리 후 ChromaDB 상태 ==="
-        //                 ls -lh data/vectordb/chroma.sqlite3
-        //                 md5sum data/vectordb/chroma.sqlite3
+                        # PDF 처리 후 ChromaDB 상태 확인
+                        echo "=== PDF 처리 후 ChromaDB 상태 ==="
+                        ls -lh data/vectordb/chroma.sqlite3
+                        md5sum data/vectordb/chroma.sqlite3
                         
-        //                 # ChromaDB 컬렉션 상태 재확인
-        //                 echo "=== ChromaDB 처리 후 상태 확인 ==="
-        //                 python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'처리 후 문서 수: {collection.count()}')"
+                        # ChromaDB 컬렉션 상태 재확인
+                        echo "=== ChromaDB 처리 후 상태 확인 ==="
+                        python3 -c "import chromadb; client = chromadb.PersistentClient(path='data/vectordb'); collection = client.get_collection('pdf_collection'); print(f'처리 후 문서 수: {collection.count()}')"
                         
-        //                 # 상태 확인
-        //                 if [ -f "data/vectordb/processed_states.json" ]; then
-        //                     echo "=== processed_states.json 상태 ==="
-        //                     echo "파일 크기: $(ls -lh data/vectordb/processed_states.json | awk '{print $5}')"
-        //                     echo "수정 시간: $(ls -l data/vectordb/processed_states.json | awk '{print $6, $7, $8}')"
-        //                     echo "처리된 파일 수: $(jq 'length' data/vectordb/processed_states.json)"
-        //                 fi
-        //             '''
-        //         }
-        //     }
-        // }
+                        # 상태 확인
+                        if [ -f "data/vectordb/processed_states.json" ]; then
+                            echo "=== processed_states.json 상태 ==="
+                            echo "파일 크기: $(ls -lh data/vectordb/processed_states.json | awk '{print $5}')"
+                            echo "수정 시간: $(ls -l data/vectordb/processed_states.json | awk '{print $6, $7, $8}')"
+                            echo "처리된 파일 수: $(jq 'length' data/vectordb/processed_states.json)"
+                        fi
+                    '''
+                }
+            }
+        }
         
-        // stage('Upload to S3') {
-        //     when {
-        //         expression { 
-        //             return params.UPDATE_TYPE in ['all', 'pdf-only']
-        //         }
-        //     }
-        //     steps {
-        //         withCredentials([string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')]) {
-        //             sh '''
-        //                 echo "=== S3 업로드 시작 ==="
+        stage('Upload to S3') {
+            when {
+                expression { 
+                    return params.UPDATE_TYPE in ['all', 'pdf-only']
+                }
+            }
+            steps {
+                withCredentials([string(credentialsId: 'aws-s3-bucket', variable: 'AWS_S3_BUCKET')]) {
+                    sh '''
+                        echo "=== S3 업로드 시작 ==="
                         
-        //                 # ChromaDB 디렉토리 내용 확인
-        //                 echo "vectordb 디렉토리 내용:"
-        //                 ls -la data/vectordb/
+                        # ChromaDB 디렉토리 내용 확인
+                        echo "vectordb 디렉토리 내용:"
+                        ls -la data/vectordb/
                         
-        //                 # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
-        //                 aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
-        //                     --exclude "*.gitkeep" \
-        //                     --exclude "*.bak" \
-        //                     --exclude "*_backup*" \
-        //                     --include "chroma.sqlite3" \
-        //                     --include "processed_states.json" \
-        //                     --include "index/*" \
-        //                     --exact-timestamps
+                        # ChromaDB 파일들이 모두 업로드되도록 명시적으로 지정
+                        aws s3 sync data/vectordb/ s3://repick-chromadb/vectordb/ \
+                            --exclude "*.gitkeep" \
+                            --exclude "*.bak" \
+                            --exclude "*_backup*" \
+                            --include "chroma.sqlite3" \
+                            --include "processed_states.json" \
+                            --include "index/*" \
+                            --exact-timestamps
                         
-        //                 # 업로드 확인
-        //                 echo "=== S3 업로드된 파일 목록 ==="
-        //                 aws s3 ls s3://repick-chromadb/vectordb/ --recursive
+                        # 업로드 확인
+                        echo "=== S3 업로드된 파일 목록 ==="
+                        aws s3 ls s3://repick-chromadb/vectordb/ --recursive
                         
-        //                 echo "S3 업로드 완료"
-        //             '''
-        //         }
-        //     }
-        // }
+                        echo "S3 업로드 완료"
+                    '''
+                }
+            }
+        }
         
         stage('Build and Push Docker') {
             when {
