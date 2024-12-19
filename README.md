@@ -2,4 +2,4 @@
 # RePick(Research Pick)
 
 - MLOps Pipeline
-![Pipeline](https://github.com/user-attachments/assets/67cfd83d-773c-47d8-969a-91e706f072f1.PNG)
+![3-10](https://github.com/user-attachments/assets/b6be587b-3084-4db3-904b-c1141f8369f0)
