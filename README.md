@@ -10,7 +10,8 @@
 ![3-10](https://github.com/user-attachments/assets/b6be587b-3084-4db3-904b-c1141f8369f0)
 ![3-9](https://github.com/user-attachments/assets/7c094641-8a08-49ce-97e8-83c0f56486c0)
 
-[3-12.pdf](https://github.com/user-attachments/files/18207842/3-12.pdf)
+### LLM
+![3-12](https://github.com/user-attachments/assets/6f1309ad-f449-446f-bf9c-4156caadb7a0)
 ![3-13](https://github.com/user-attachments/assets/957219ef-eafa-4a42-8af5-45213bafd985)
 
 ### Authors
