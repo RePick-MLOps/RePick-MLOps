@@ -2,6 +2,16 @@
 # RePick(Research Pick)
 
 ## 금융 리포트 요약 및 개인화 챗봇 서비스
+
+- RePick Chatbot 구현 화면
+
+![Image](https://github.com/user-attachments/assets/36f32afa-06b5-4719-b2bb-3147c6b200b6)
+
+- RePick Reports(Data Source) 저장소 구현 화면
+
+![Image](https://github.com/user-attachments/assets/f33e31b4-4943-4acd-9805-8a9e52d04760)
+
+
 - RePick은 금융권 애널리스트 레포트를 데이터베이스로 활용해 정보를 효율적으로 제공하는 챗봇 서비스입니다.
   - 데이터 처리: 레포트를 세부 요소(Table, Chart, Image 등)로 분리하고, 각 요소에 Summary를 생성해 벡터화
   - 검색 최적화: MMR과 BM25 알고리즘으로 질문의 의도와 가장 연관성 높은 답변 제공
